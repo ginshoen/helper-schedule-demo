@@ -1,0 +1,2157 @@
+<!doctype html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>訪問介護予定表自動作成システム</title>
+    <style>
+  :root {
+    --bg: #f8fafd;
+    --panel: #fff;
+    --text: #202124;
+    --muted: #5f6368;
+    --line: #dadce0;
+    --blue: #1a73e8;
+    --blue-dark: #1558b0;
+    --warn: #b3261e;
+    --warn-bg: #fce8e6;
+    --ok-bg: #e6f4ea;
+    --ok: #137333;
+    /* 状態色 */
+    --orange: #b05a00;
+    --orange-bg: #fef0e0;
+    --grey-bg: #eceff1;
+    --grey-text: #5f6368;
+    --row-warn-bg: #fff5ee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Arial, "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  button, input, select, textarea {
+    font: inherit;
+  }
+  button, .link-button {
+    min-height: 44px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--text);
+    padding: 0 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
+  }
+  button:hover, .link-button:hover { background: #f1f3f4; }
+  button.primary {
+    border-color: var(--blue);
+    background: var(--blue);
+    color: #fff;
+  }
+  button.primary:hover { background: var(--blue-dark); }
+  button.ghost { background: transparent; }
+  input, select, textarea {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 10px;
+    background: #fff;
+  }
+  label {
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  label.check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 24px;
+    color: var(--text);
+  }
+  label.check input { width: auto; min-height: auto; }
+  .hidden { display: none !important; }
+  .login {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: #eef3fb;
+  }
+  .login-panel {
+    width: min(440px, 100%);
+    display: grid;
+    gap: 18px;
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 12px 28px rgba(60, 64, 67, .16);
+  }
+  .login-panel h1 { margin: 4px 0 0; font-size: 24px; line-height: 1.3; }
+  .eyebrow { margin: 0; color: var(--blue); font-weight: 700; letter-spacing: 0; }
+  .muted { color: var(--muted); margin: 0; }
+  .topbar {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--line);
+    background: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .top-actions { display: flex; gap: 8px; align-items: center; }
+  .badge {
+    margin-left: 10px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    padding: 8px 16px 0;
+    border-bottom: 1px solid var(--line);
+    background: #fff;
+    overflow-x: auto;
+  }
+  .tabs button {
+    min-width: fit-content;
+    min-height: 48px;
+    border-color: transparent;
+    border-bottom: 3px solid transparent;
+    border-radius: 8px 8px 0 0;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .tabs button:hover { background: #f1f3f4; }
+  .tabs button.active {
+    color: #fff;
+    background: var(--blue);
+    border-bottom-color: var(--blue-dark);
+    box-shadow: 0 2px 0 var(--blue-dark);
+  }
+  .tabs button.active:hover { background: var(--blue-dark); }
+  main { padding: 16px; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .toolbar, .button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 14px;
+  }
+  .toolbar label { min-width: 180px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .summary-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .summary-card strong { display: block; font-size: 24px; margin-top: 4px; }
+  .summary-card.warn { background: var(--warn-bg); border-color: #f3b8b3; }
+  .summary-card.ok { background: var(--ok-bg); border-color: #b7dfc1; }
+  .section-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 18px 0 10px;
+  }
+  h2 { font-size: 16px; margin: 0; }
+  .table-wrap {
+    overflow: auto;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 780px;
+  }
+  th, td {
+    border-bottom: 1px solid var(--line);
+    padding: 9px 10px;
+    text-align: left;
+    vertical-align: top;
+    white-space: nowrap;
+  }
+  th {
+    position: sticky;
+    top: 0;
+    background: #f1f3f4;
+    z-index: 1;
+    font-weight: 700;
+  }
+  tr:hover td { background: #fafafa; }
+  .warning { color: var(--warn); font-weight: 700; }
+  .status {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 3px 8px;
+    background: #f1f3f4;
+    color: #3c4043;
+    font-size: 12px;
+  }
+  .status.warn { background: var(--warn-bg); color: var(--warn); }
+  .timeline {
+    display: grid;
+    gap: 10px;
+  }
+  .lane {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .lane-name {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    font-weight: 700;
+  }
+  .lane-track {
+    min-height: 54px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: repeating-linear-gradient(90deg, #fff 0, #fff 7.9%, #f1f3f4 8%, #f1f3f4 8.2%);
+    position: relative;
+    overflow: hidden;
+  }
+  .visit-card {
+    position: absolute;
+    top: 7px;
+    height: 38px;
+    border-radius: 6px;
+    background: #e8f0fe;
+    border: 1px solid #c7d8fb;
+    padding: 4px 6px;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 1.25;
+  }
+  .visit-card.warn { background: var(--warn-bg); border-color: #f3b8b3; }
+  .master-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) 1fr;
+    gap: 14px;
+  }
+  .side-panel {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+  }
+  .editor {
+    display: grid;
+    gap: 10px;
+    max-height: 58vh;
+    overflow: auto;
+    padding-right: 4px;
+  }
+  .result {
+    min-height: 80px;
+    max-height: 220px;
+    overflow: auto;
+    padding: 12px;
+    border-radius: 8px;
+    background: #f1f3f4;
+    white-space: pre-wrap;
+  }
+  .toast {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    background: #202124;
+    color: #fff;
+    border-radius: 6px;
+    padding: 12px 14px;
+    max-width: min(420px, calc(100vw - 32px));
+    z-index: 10;
+  }
+  /* パスワード警告バナー（高さを抑えた1行の帯） */
+  .pw-warn {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin: 10px 16px 0; padding: 6px 8px 6px 14px;
+    background: var(--warn-bg); border: 1px solid #f3b8b3; border-left: 4px solid var(--warn);
+    border-radius: 6px; color: var(--warn); font-size: 13px;
+  }
+  .pw-warn span { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .pw-warn .pw-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+  .pw-warn button { min-height: 36px; padding: 0 14px; flex: 0 0 auto; color: #fff; font-size: 13px; }
+  @media (max-width: 760px) {
+    .pw-warn .pw-text { white-space: normal; }
+  }
+
+  /* パネル見出し・補助文 */
+  .panel + .panel { margin-top: 14px; }
+  .panel-title { font-size: 17px; margin: 0 0 6px; }
+  .help { color: var(--muted); font-size: 13px; margin: 0 0 12px; line-height: 1.6; }
+  .help.warn-text, .warn-text { color: var(--warn); }
+  .advanced { margin: 10px 0; }
+  .advanced summary { cursor: pointer; color: var(--blue); font-size: 13px; padding: 6px 0; }
+  button.danger { color: var(--warn); border-color: #f3b8b3; }
+  button.big { min-height: 52px; font-size: 16px; padding: 0 22px; }
+
+  /* セグメント切替 */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+  .seg-btn { min-height: 44px; border: 0; border-radius: 0; background: #fff; color: var(--text); padding: 0 18px; }
+  .seg-btn.active { background: var(--blue); color: #fff; }
+  .mode-pane { margin-bottom: 12px; }
+  .big-label { font-size: 14px; color: var(--text); gap: 8px; max-width: 320px; }
+  .big-label input { min-height: 48px; font-size: 16px; }
+  .quick-row { display: flex; gap: 8px; margin-top: 10px; }
+  .chip { min-height: 40px; border-radius: 999px; padding: 0 16px; }
+  .echo { margin: 10px 0 0; font-weight: 700; color: var(--ok); }
+
+  /* ステップ表示 */
+  .stepper { display: flex; gap: 8px; list-style: none; padding: 0; margin: 0 0 16px; flex-wrap: wrap; }
+  .step { display: flex; align-items: center; gap: 8px; color: var(--grey-text); font-size: 14px; font-weight: 700;
+          border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; background: #fff; }
+  .step-no { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+             background: #c4c9cf; color: #fff; font-size: 13px; font-weight: 800; }
+  .step-tag { font-size: 11px; font-weight: 800; letter-spacing: .04em; padding: 1px 7px; border-radius: 999px;
+              background: #eceff1; color: var(--grey-text); }
+  /* 完了 */
+  .step.done { border-color: #b7dfc1; background: var(--ok-bg); color: var(--ok); }
+  .step.done .step-no { background: var(--ok); }
+  .step.done .step-tag { background: var(--ok); color: #fff; }
+  /* 実行中 */
+  .step.current { border-color: var(--blue); background: #e8f0fe; color: var(--blue-dark); box-shadow: 0 0 0 2px rgba(26,115,232,.18); }
+  .step.current .step-no { background: var(--blue); }
+  .step.current .step-tag { background: var(--blue); color: #fff; }
+  /* 未着手は既定（グレー） */
+
+  /* 状態バッジ */
+  .status.s-draft  { background: var(--grey-bg);   color: var(--grey-text); }
+  .status.s-review { background: var(--orange-bg); color: var(--orange); font-weight: 700; }
+  .status.s-fixed  { background: var(--ok-bg);     color: var(--ok); }
+  .status.s-changed{ background: #e8f0fe;          color: var(--blue-dark); }
+  /* 警告行は淡い警告色で背景を塗る */
+  tr.warning-row td { background: var(--row-warn-bg); }
+  tr.warning-row:hover td { background: #ffece0; }
+  td.warning { color: var(--warn); font-weight: 700; }
+
+  /* 表内の操作ボタン（44px確保） */
+  td .row-actions { display: flex; gap: 6px; }
+  td .row-actions button { min-height: 44px; padding: 0 12px; }
+  button.cancel { color: var(--warn); border-color: #f3b8b3; background: #fff6f5; }
+  button.cancel:hover { background: var(--warn-bg); }
+
+  /* レスポンシブ表（狭幅でカード化） */
+  @media (max-width: 760px) {
+    table.resp { min-width: 0; }
+    table.resp thead { display: none; }
+    table.resp, table.resp tbody, table.resp tr, table.resp td { display: block; width: 100%; }
+    table.resp tr { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; padding: 4px 6px; background: #fff; }
+    table.resp tr.warning-row { border-color: #f3b8b3; background: var(--row-warn-bg); }
+    table.resp td { border: 0; white-space: normal; display: flex; justify-content: space-between; gap: 12px; padding: 8px 8px; align-items: center; }
+    table.resp td + td { border-top: 1px dashed #eceff1; }
+    table.resp td::before { content: attr(data-label); font-weight: 700; color: var(--muted); flex: 0 0 auto; }
+    table.resp td[data-label="操作"] { justify-content: flex-end; }
+    table.resp td[data-label="操作"]::before { content: ""; }
+    table.resp td[data-label="利用者名"] { font-size: 17px; font-weight: 700; }
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* 結果カード */
+  .result-card { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #f8fbff; }
+  .result-card .nums { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 8px; }
+  .result-card .num { font-size: 14px; color: var(--muted); }
+  .result-card .num strong { display: block; font-size: 26px; color: var(--text); }
+  .result-card .num.warn strong { color: var(--warn); }
+  .result-card .go-unassigned { margin-top: 6px; }
+
+  /* オーバーレイ */
+  .overlay { position: fixed; inset: 0; background: rgba(32,33,36,.45); display: grid; place-items: center; z-index: 50; }
+  .overlay-box { background: #fff; border-radius: 12px; padding: 26px 30px; width: min(360px, 90vw); text-align: center;
+                 box-shadow: 0 16px 40px rgba(0,0,0,.25); }
+  .spinner { width: 44px; height: 44px; margin: 0 auto 14px; border: 4px solid #e0e0e0; border-top-color: var(--blue);
+             border-radius: 50%; animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .overlay-msg { margin: 0 0 12px; font-weight: 700; }
+  .progress { height: 8px; background: #e8eaed; border-radius: 999px; overflow: hidden; }
+  .progress-bar { height: 100%; width: 0; background: var(--blue); transition: width .4s ease; }
+  .overlay-elapsed { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+
+  /* モーダル */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(32,33,36,.45); display: grid; place-items: center; z-index: 60; padding: 16px; }
+  .modal-box { background: #fff; border-radius: 12px; padding: 20px; width: min(440px, 100%); box-shadow: 0 16px 40px rgba(0,0,0,.25); }
+  .modal-title { font-size: 18px; margin: 0 0 14px; }
+  .modal-body { display: grid; gap: 12px; margin-bottom: 16px; }
+  .modal-body label { color: var(--text); font-size: 13px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+  /* 未割当カード（セクション分割） */
+  .ua-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .ua-card { border: 1px solid var(--line); border-top: 4px solid var(--orange); background: #fff;
+             border-radius: 10px; padding: 14px; display: grid; gap: 10px; }
+  .ua-card h3 { margin: 0; font-size: 17px; }
+  .ua-card .ua-meta { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+  .ua-sec { border-top: 1px solid #eceff1; padding-top: 10px; }
+  .ua-sec:first-of-type { border-top: 0; padding-top: 0; }
+  .ua-sec-title { font-size: 12px; font-weight: 800; letter-spacing: .04em; color: var(--muted); margin: 0 0 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip-reason { display: inline-flex; align-items: center; gap: 6px; background: var(--warn-bg); color: var(--warn);
+                 border: 1px solid #f3b8b3; border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+  .chip-reason b { font-weight: 800; }
+  .cand-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+              padding: 6px 0; }
+  .cand-info { font-size: 14px; }
+  .cand-note { color: var(--orange); font-size: 12px; }
+  .ua-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ua-actions button { min-height: 44px; }
+  .ua-empty-sec { color: var(--muted); font-size: 13px; margin: 0; }
+
+  /* 出力結果・補足 */
+  .field-hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+  .panel-head-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 0 0 4px; }
+  .result.is-ok { border-left: 4px solid var(--ok); }
+  .result.is-err { border-left: 4px solid var(--warn); color: var(--warn); }
+  .result-empty { color: var(--muted); }
+
+  @media (max-width: 760px) {
+    .topbar { height: auto; align-items: flex-start; gap: 10px; padding: 12px; flex-direction: column; }
+    .top-actions { width: 100%; }
+    .top-actions > * { flex: 1; }
+    main { padding: 10px; }
+    .toolbar { gap: 8px; }
+    .toolbar label { min-width: 100%; }
+    /* 表示/印刷などのボタンは2列にせず縦積み */
+    .toolbar button, .button-row button { flex: 1 1 100%; width: 100%; }
+    .lane { grid-template-columns: 1fr; }
+    .lane-track { min-height: 86px; }
+    .master-layout { grid-template-columns: 1fr; }
+    .login-panel { padding: 22px; }
+    .seg, .seg-btn { width: 100%; }
+    .seg { display: flex; }
+    .seg-btn { flex: 1; }
+    .ua-cards { grid-template-columns: 1fr; }
+  }
+  /* ===== はじめにガイド（オンボーディング） ===== */
+  .guide {
+    position: relative;
+    background: linear-gradient(180deg, #f0f6ff 0%, #ffffff 100%);
+    border: 1px solid #c7d8fb;
+    border-radius: 12px;
+    padding: 18px 18px 16px;
+    margin-bottom: 16px;
+  }
+  .guide h2 { font-size: 18px; margin: 0 0 2px; color: var(--blue-dark); }
+  .guide .guide-lead { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+  .guide-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .guide-step {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+  }
+  .guide-step .g-no {
+    flex: 0 0 auto; display: inline-grid; place-items: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--blue); color: #fff; font-weight: 800; font-size: 15px;
+  }
+  .guide-step .g-body { display: grid; gap: 2px; }
+  .guide-step .g-title { font-weight: 800; font-size: 15px; }
+  .guide-step .g-desc { color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .guide-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .guide-close {
+    position: absolute; top: 10px; right: 10px;
+    min-height: 32px; padding: 0 12px; font-size: 13px; color: var(--muted);
+    border-color: transparent; background: transparent;
+  }
+  .guide-close:hover { background: #eef3fb; }
+  .help-btn { color: var(--blue); border-color: #c7d8fb; }
+  @media (max-width: 760px) {
+    .guide-actions .primary { flex: 1 1 100%; }
+  }
+
+  @media print {
+    .topbar, .tabs, .toolbar, button, .side-panel, #toast, .stepper, .overlay, .modal-backdrop, .guide { display: none !important; }
+    main { padding: 0; }
+    .view { display: none !important; }
+    #daily.view { display: block !important; }
+    .table-wrap { border: 0; overflow: visible; }
+    table { min-width: 0; font-size: 11px; }
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; }
+    /* 白黒印刷でも警告が分かるよう下線で示す */
+    .warning, td.warning { text-decoration: underline; font-weight: 700; }
+    .status.warn, .status.s-review { border: 1px solid #000; }
+  }
+</style>
+
+  </head>
+  <body>
+    <section id="loginView" class="login">
+      <form id="loginForm" class="login-panel">
+        <div>
+          <p class="eyebrow">Helper Schedule</p>
+          <h1>訪問介護予定表自動作成システム</h1>
+        </div>
+        <label>ID<input id="loginId" autocomplete="username" placeholder="IDを入力"></label>
+        <label>パスワード<input id="password" type="password" autocomplete="current-password" placeholder="パスワードを入力"></label>
+        <button class="primary" type="submit">ログイン</button>
+      </form>
+    </section>
+
+    <section id="appView" class="app hidden">
+      <header class="topbar">
+        <div>
+          <strong>訪問介護予定表</strong><span class="badge">デモ版（データはすべて架空）</span>
+          <span id="userBadge" class="badge"></span>
+        </div>
+        <div class="top-actions">
+          <button id="helpButton" class="ghost help-btn" type="button">？使い方</button>
+          <a id="sheetLink" class="link-button" target="_blank">スプレッドシート</a>
+          <button id="logoutButton" class="ghost">ログアウト</button>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="main">
+        <button data-view="dashboard" class="active">ダッシュボード</button>
+        <button data-view="auto">自動作成</button>
+        <button data-view="daily">日別</button>
+        <button data-view="unassigned">未割当</button>
+        <button data-view="masters">マスタ</button>
+        <button data-view="output">出力</button>
+      </nav>
+
+      <div id="pwWarn" class="pw-warn hidden" role="alert">
+        <span><span aria-hidden="true">⚠</span><span class="pw-text">初期管理者パスワードのままです。本番運用前に変更してください。</span></span>
+        <button id="pwChange" class="primary">変更</button>
+      </div>
+
+      <main>
+        <section id="dashboard" class="view active">
+          <div id="guide" class="guide hidden">
+            <button id="guideClose" class="guide-close" type="button">閉じる ✕</button>
+            <h2>はじめての方へ — 3ステップで予定表ができます</h2>
+            <p class="guide-lead">下の順番で進めるだけです。迷ったら上の「？使い方」からいつでもここに戻れます。</p>
+            <div class="guide-steps">
+              <div class="guide-step">
+                <span class="g-no">1</span>
+                <span class="g-body">
+                  <span class="g-title">取り込む</span>
+                  <span class="g-desc">スプレッドシートの利用者・職員・勤務表をアプリに読み込みます。</span>
+                </span>
+              </div>
+              <div class="guide-step">
+                <span class="g-no">2</span>
+                <span class="g-body">
+                  <span class="g-title">自動作成</span>
+                  <span class="g-desc">対象の月（または日）を選んで、訪問予定を自動で作ります。</span>
+                </span>
+              </div>
+              <div class="guide-step">
+                <span class="g-no">3</span>
+                <span class="g-body">
+                  <span class="g-title">確認して確定</span>
+                  <span class="g-desc">「日別」で内容を確認し、問題なければ確定して完成です。</span>
+                </span>
+              </div>
+            </div>
+            <div class="guide-actions">
+              <button id="guideStart" class="primary big" type="button">① 自動作成をはじめる →</button>
+              <span class="help">※ まだデータがないときは、まずここから始めてください。</span>
+            </div>
+          </div>
+          <div class="toolbar">
+            <label>対象日<input id="dashboardDate" type="date"></label>
+            <button id="todayButton">今日</button>
+            <button id="reloadDashboard">更新</button>
+          </div>
+          <div id="summaryCards" class="summary-grid"></div>
+          <div class="section-title">
+            <h2 id="timelineTitle">本日の職員別タイムライン</h2>
+          </div>
+          <div id="timeline" class="timeline"></div>
+          <div class="section-title">
+            <h2 id="todayTableTitle">本日の全体予定</h2>
+          </div>
+          <div id="todayTable" class="table-wrap"></div>
+        </section>
+
+        <section id="auto" class="view">
+          <!-- 操作の流れ -->
+          <ol class="stepper" id="stepper" aria-label="作成の流れ">
+            <li class="step current" data-step="1"><span class="step-no">1</span>取込<span class="step-tag">実行中</span></li>
+            <li class="step" data-step="2"><span class="step-no">2</span>作成<span class="step-tag">未着手</span></li>
+            <li class="step" data-step="3"><span class="step-no">3</span>確認<span class="step-tag">未着手</span></li>
+            <li class="step" data-step="4"><span class="step-no">4</span>確定<span class="step-tag">未着手</span></li>
+          </ol>
+
+          <div id="autoSummary" class="summary-grid hidden" aria-label="取り込み・作成サマリー"></div>
+
+          <div class="panel">
+            <h2 class="panel-title">① まずデータを取り込む</h2>
+            <p class="help">スプレッドシートの利用者・職員・勤務表・曜日別予定をアプリに読み込みます。初回と、勤務表を更新したときに実行してください。</p>
+            <div class="button-row">
+              <button id="importButton" class="primary big">既存シートを取り込む</button>
+            </div>
+            <details class="advanced">
+              <summary>管理者向けの詳細設定</summary>
+              <p class="help warn-text">「APPシート初期化」はアプリ用シートと初期データを作り直します。通常は使いません。</p>
+              <button id="setupButton" class="ghost danger">APPシート初期化</button>
+            </details>
+          </div>
+
+          <div class="panel">
+            <h2 class="panel-title">② 予定を作成する</h2>
+            <div class="seg" role="radiogroup" aria-label="作成する範囲">
+              <button type="button" id="modeMonth" class="seg-btn active" role="radio" aria-checked="true">月でまとめて作成</button>
+              <button type="button" id="modeDay" class="seg-btn" role="radio" aria-checked="false">日を指定して作成</button>
+            </div>
+
+            <div id="monthPane" class="mode-pane">
+              <label class="big-label">対象の月
+                <input id="autoMonth" type="month">
+              </label>
+              <div class="quick-row">
+                <button type="button" id="thisMonth" class="chip">今月</button>
+                <button type="button" id="nextMonth" class="chip">来月</button>
+              </div>
+              <p id="monthEcho" class="echo"></p>
+            </div>
+
+            <div id="dayPane" class="mode-pane hidden">
+              <label class="big-label">対象の日
+                <input id="autoDay" type="date">
+              </label>
+            </div>
+
+            <details class="advanced">
+              <summary>詳細オプション</summary>
+              <div class="form-grid">
+                <label>対象サービス<input id="serviceTypes" placeholder="空欄なら全サービス"></label>
+                <label class="check"><input id="includeHelpers" type="checkbox">ヘルプ職員を含める</label>
+                <label class="check"><input id="overwrite" type="checkbox" checked>対象期間を上書きする</label>
+              </div>
+            </details>
+
+            <div class="button-row">
+              <button id="autoPreview" class="primary big" disabled>この内容で作成する</button>
+            </div>
+            <p class="help" id="autoHint">※ 先に「① 取り込む」を実行すると、このボタンが押せるようになります。作成だけでは確定しません。</p>
+
+            <div id="resultCard" class="result-card hidden" aria-live="polite"></div>
+          </div>
+
+          <div class="panel">
+            <h2 class="panel-title">③ 確認 → ④ 確定する</h2>
+            <p class="help">「日別」タブで内容を確認し、問題なければ確定します。確定すると正式な予定になります。</p>
+            <div class="button-row">
+              <button id="confirmButton" class="primary" disabled>この内容で確定する</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="daily" class="view">
+          <div class="toolbar">
+            <label>開始日<input id="scheduleStart" type="date"></label>
+            <label>終了日<input id="scheduleEnd" type="date"></label>
+            <button id="reloadSchedules">表示</button>
+            <button onclick="window.print()">印刷</button>
+          </div>
+          <div id="scheduleTable" class="table-wrap"></div>
+        </section>
+
+        <section id="unassigned" class="view">
+          <div class="toolbar">
+            <label>開始日<input id="unassignedStart" type="date"></label>
+            <label>終了日<input id="unassignedEnd" type="date"></label>
+            <button id="reloadUnassigned">表示</button>
+          </div>
+          <div id="unassignedTable" class="table-wrap"></div>
+        </section>
+
+        <section id="masters" class="view">
+          <div class="master-layout">
+            <aside class="side-panel">
+              <label>マスタ
+                <select id="masterSelect">
+                  <option value="users">利用者マスタ</option>
+                  <option value="staff">職員マスタ</option>
+                  <option value="servicePlans">サービス予定マスタ</option>
+                  <option value="shifts">勤務予定</option>
+                  <option value="authUsers">ユーザー管理</option>
+                  <option value="settings">設定</option>
+                </select>
+              </label>
+              <button id="loadMaster" class="primary">読込</button>
+              <button id="newMaster">新規</button>
+              <div id="masterEditor" class="editor"></div>
+            </aside>
+            <div id="masterTable" class="table-wrap"></div>
+          </div>
+        </section>
+
+        <section id="output" class="view">
+          <div class="panel">
+            <h2 class="panel-title">データを出力する</h2>
+            <p class="help">期間を選び、CSV・日別PDF・Excel(スプレッドシート)で出力します。出力は元データを変更しません。</p>
+            <div class="form-grid">
+              <label>開始日<input id="outputStart" type="date"></label>
+              <label>終了日<input id="outputEnd" type="date"></label>
+              <label>CSV種別
+                <select id="csvType">
+                  <option value="schedules">訪問予定</option>
+                  <option value="unassigned">未割当</option>
+                  <option value="changes">変更履歴</option>
+                </select>
+                <span class="field-hint" id="csvHint"></span>
+              </label>
+            </div>
+            <div class="button-row">
+              <button id="csvButton" class="primary">CSV出力</button>
+              <button id="pdfButton">日別PDF出力</button>
+              <button id="excelButton">Excel出力URL</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head-row">
+              <h2 class="panel-title">出力結果 / メッセージ</h2>
+            </div>
+            <p class="help">出力したファイルのリンクや結果メッセージがここに表示されます。</p>
+            <pre id="outputResult" class="result result-empty">まだ出力していません。上のボタンから出力するとリンクとメッセージが表示されます。</pre>
+          </div>
+        </section>
+      </main>
+
+      <div id="toast" class="toast hidden"></div>
+    </section>
+
+    <!-- 処理中オーバーレイ -->
+    <div id="overlay" class="overlay hidden" role="alertdialog" aria-busy="true" aria-live="assertive">
+      <div class="overlay-box">
+        <div class="spinner" aria-hidden="true"></div>
+        <p id="overlayMsg" class="overlay-msg">処理中です…</p>
+        <div class="progress"><div id="progressBar" class="progress-bar"></div></div>
+        <p id="overlayElapsed" class="overlay-elapsed">経過 0:00</p>
+      </div>
+    </div>
+
+    <!-- 汎用モーダル（手修正・確認） -->
+    <div id="modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-box">
+        <h2 id="modalTitle" class="modal-title"></h2>
+        <div id="modalBody" class="modal-body"></div>
+        <div class="modal-actions">
+          <button id="modalCancel" class="ghost">キャンセル</button>
+          <button id="modalOk" class="primary">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+  // ---- google.script.run モック（プレビュー専用） ----
+  // 本番はGASが実データを返す。プレビューでは「画面で選んだ日付」に合わせて仮データを組み立てる。
+  const PREVIEW_TODAY = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  const WEEKDAY_JA = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
+
+  function previewWeekday(dateStr) {
+    const p = String(dateStr || '').split('-').map(Number);
+    if (p.length < 3 || !p[0]) return '';
+    return WEEKDAY_JA[new Date(p[0], p[1] - 1, p[2]).getDay()] || '';
+  }
+
+  // start〜end の日付配列（プレビューが重くならないよう最大31日）
+  function previewRange(start, end) {
+    const s = new Date(start), e = new Date(end || start);
+    if (isNaN(s) || isNaN(e)) return [start];
+    const out = [];
+    for (let d = new Date(s); d <= e && out.length < 31; d.setDate(d.getDate() + 1)) {
+      out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    }
+    return out.length ? out : [start];
+  }
+
+  // ===== 元スプレッドシートの内容（取り込み済みスナップショット） =====
+  // ※ デモ版: 氏名・部屋番号はすべて架空の値に置き換えてあります。
+  // GAS接続後は、同じ形のデータをサーバーから受け取るだけで置き換えられる。
+
+  // 利用者一覧: [氏名, 中(ケアハウス内)/外(外訪問), 部屋番号]
+  const SHEET_USERS = [
+    ['利用者01','中','101'],['利用者02','中','102'],['利用者03','中','103'],['利用者04','中','104'],
+    ['利用者05','中','105'],['利用者06','中','106'],['利用者07','中','107'],['利用者08','中','108'],
+    ['利用者09','中','109'],['利用者10','中','110'],['利用者11','中','111'],['利用者12','中','112'],
+    ['利用者13','中','113'],['利用者14','中','114'],['利用者15','外',''],['利用者16','中','115'],
+    ['利用者17','外',''],['利用者18','中','116'],['利用者19','中','117'],['利用者20','中','118'],
+    ['利用者21','中','119'],['利用者22','中','120'],['利用者23','中','121'],['利用者24','中','122'],
+    ['利用者25','外',''],['利用者26','中','123'],['利用者27','中','124'],['利用者28','中','125'],
+    ['利用者29','中','126'],['利用者30','中','127'],['利用者31','中','128'],['利用者32','中','129'],
+    ['利用者33','中','130'],['利用者34','中','131'],['利用者35','中','132'],['利用者36','中','133'],
+    ['利用者37','中','134'],['利用者38','中','135'],['利用者39','外',''],['利用者40','中','136'],
+    ['利用者41','中','137'],['利用者42','中','138'],['利用者43','外',''],['利用者44','外',''],
+    ['利用者45','中','139'],['利用者46','中','140']
+  ];
+
+  // 職員: 日曜出勤の可否 / 訪問できない利用者
+  const SHEET_STAFF = [
+    { name:'職員01', sunday:true,  ng:[] },
+    { name:'職員02',   sunday:true,  ng:['利用者44','利用者25'] },
+    { name:'職員03',   sunday:true,  ng:['利用者44','利用者25'] },
+    { name:'職員04', sunday:false, ng:['利用者39','利用者25','利用者43'] }
+  ];
+
+  // 時刻が決まっている固定訪問: {利用者, 対象曜日, 開始, 終了, サービス名}
+  const SHEET_FIXED = [
+    { user:'利用者03',   days:'金',      start:'10:30', end:'11:29', service:'生活3Ⅱ' },
+    { user:'利用者09', days:'木',      start:'13:30', end:'14:29', service:'訪問型サービスA型Ⅰ' },
+    { user:'利用者10', days:'日',      start:'14:30', end:'15:14', service:'訪問型サービスA型Ⅰ' },
+    { user:'利用者15',   days:'火水金土', start:'09:30', end:'10:14', service:'生活2Ⅱ' },
+    { user:'利用者17',   days:'土',      start:'10:30', end:'11:14', service:'訪問型サービスA型Ⅰ' },
+    { user:'利用者28',   days:'土',      start:'16:00', end:'16:19', service:'身体01Ⅱ' },
+    { user:'利用者29',   days:'月水木金土', start:'14:00', end:'14:19', service:'身体01Ⅱ' },
+    { user:'利用者29',   days:'木',      start:'10:30', end:'11:29', service:'生活3Ⅱ' },
+    { user:'利用者39',   days:'火木土',  start:'08:30', end:'08:59', service:'身体1Ⅱ' },
+    { user:'利用者39',   days:'日',      start:'09:30', end:'09:59', service:'身体1Ⅱ' },
+    { user:'利用者39',   days:'日火木土', start:'16:30', end:'16:59', service:'身体1Ⅱ' },
+    { user:'利用者44',   days:'月木',    start:'11:30', end:'12:29', service:'訪問型サービスA型Ⅱ' }
+  ];
+
+  // 曜日別のサービス予定: [氏名, サービス名, サービスコード, 所要時間(分)]
+  const SHEET_PLANS = {
+    '月': [['利用者32','身体1生活1Ⅱ','112463',60],['利用者46','訪問型サービスA型Ⅰ','A31001',45],['利用者11','訪問型サービスA型Ⅱ','A31020',45],['利用者31','生活3Ⅱ','118037',60],['利用者23','生活3Ⅱ','118037',60],['利用者05','生活3Ⅱ','118037',60],['利用者44','訪問型サービスA型Ⅱ','A31020',60],['利用者18','生活3Ⅱ','118037',60],['利用者29','身体01Ⅱ','118527',20],['利用者45','生活2Ⅱ','118025',45],['利用者26','訪問型サービスA型Ⅰ','A31001',45],['利用者27','生活3Ⅱ','118037',60],['利用者37','身体01Ⅱ','118527',20],['利用者05','身体01Ⅱ','118527',20],['利用者23','身体01Ⅱ','118527',20]],
+    '火': [['利用者23','身体01Ⅱ','118527',20],['利用者05','身体01Ⅱ','118527',20],['利用者39','身体1Ⅱ','112451',30],['利用者06','身体01Ⅱ','118527',20],['利用者42','身体1Ⅱ','112451',30],['利用者41','身体01Ⅱ','118527',20],['利用者40','生活2Ⅱ','118025',20],['利用者35','身体1生活1Ⅱ','112463',60],['利用者15','生活2Ⅱ','118025',45],['利用者37','身体1生活1Ⅱ','112463',60],['利用者34','生活2Ⅱ','118025',45],['利用者20','訪問型サービスA型Ⅰ','A31002',45],['利用者43','身体2Ⅱ','112499',60],['利用者36','生活2Ⅱ','118025',45],['利用者02','生活3Ⅱ','118037',60],['利用者24','生活3Ⅱ','118037',60],['利用者13','生活3Ⅱ','118037',60],['利用者14','生活2Ⅱ','118025',45],['利用者42','身体2Ⅱ','112499',60],['利用者37','身体01Ⅱ','118527',20],['利用者39','身体1Ⅱ','112451',30],['利用者05','身体01Ⅱ','118527',20],['利用者23','身体01Ⅱ','118527',20]],
+    '水': [['利用者28','身体01Ⅱ','118527',20],['利用者37','身体1Ⅱ','112451',30],['利用者06','身体1生活1Ⅱ','112463',60],['利用者22','生活2Ⅱ','118025',45],['利用者04','訪問型サービスA型Ⅱ','A31020',45],['利用者15','生活2Ⅱ','118025',45],['利用者47','生活3Ⅱ','118037',60],['利用者11','訪問型サービスA型Ⅱ','A31020',45],['利用者43','身体2Ⅱ','112499',60],['利用者36','生活3Ⅱ','118037',60],['利用者28','生活2Ⅱ','118025',45],['利用者29','身体01Ⅱ','118527',20],['利用者07','生活3Ⅱ','118037',60],['利用者12','生活2Ⅱ','118025',45],['利用者48','','',45],['利用者37','身体01Ⅱ','118527',20],['利用者28','身体01Ⅱ','118527',20]],
+    '木': [['利用者23','身体01Ⅱ','118527',20],['利用者28','身体01Ⅱ','118527',20],['利用者05','身体01Ⅱ','118527',20],['利用者42','身体1Ⅱ','112451',30],['利用者39','身体1Ⅱ','112451',30],['利用者08','訪問型サービスA型Ⅰ','A31001',45],['利用者19','生活3Ⅱ','118037',60],['利用者31','生活3Ⅱ','118037',60],['利用者30','生活2Ⅱ','118025',45],['利用者29','生活2Ⅱ','118025',45],['利用者44','訪問型サービスA型Ⅱ','A31020',60],['利用者23','生活2Ⅱ','118025',45],['利用者09','訪問型サービスA型Ⅰ','A31001',60],['利用者40','生活2Ⅱ','118025',45],['利用者29','身体01Ⅱ','118527',20],['利用者21','生活2Ⅱ','118025',45],['利用者42','身体2Ⅱ','112499',60],['利用者37','身体01Ⅱ','118527',20],['利用者39','身体1Ⅱ','112451',30],['利用者05','身体01Ⅱ','118527',20],['利用者28','身体01Ⅱ','118527',20],['利用者23','身体01Ⅱ','118527',20]],
+    '金': [['利用者23','身体01Ⅱ','118527',20],['利用者05','身体01Ⅱ','118527',20],['利用者06','身体01Ⅱ','118527',20],['利用者42','身体1Ⅱ','112451',30],['利用者41','身体01Ⅱ','118527',20],['利用者02','生活3Ⅱ','118037',60],['利用者36','生活3Ⅱ','118037',60],['利用者15','生活2Ⅱ','118025',45],['利用者37','身体1生活1Ⅱ','112463',60],['利用者03','生活3Ⅱ','118037',60],['利用者34','生活2Ⅱ','118025',45],['利用者13','生活3Ⅱ','118037',60],['利用者43','身体2Ⅱ','112499',60],['利用者01','生活2Ⅱ','118025',45],['利用者29','身体01Ⅱ','118527',20],['利用者27','生活3Ⅱ','118037',60],['利用者42','身体2Ⅱ','112499',60],['利用者24','生活3Ⅱ','118037',60],['利用者37','身体01Ⅱ','118527',20],['利用者05','身体01Ⅱ','118527',20],['利用者23','身体01Ⅱ','118527',20]],
+    '土': [['利用者39','身体1Ⅱ','112451',30],['利用者22','生活2Ⅱ','118025',45],['利用者04','訪問型サービスA型Ⅱ','A31020',45],['利用者15','生活2Ⅱ','118025',45],['利用者17','訪問型サービスA型Ⅰ','A31001',45],['利用者14','生活2Ⅱ','118025',45],['利用者29','身体01Ⅱ','118527',20],['利用者12','生活2Ⅱ','118025',45],['利用者48','','',45],['利用者37','身体01Ⅱ','118527',20],['利用者28','身体01Ⅱ','118527',20],['利用者39','身体1Ⅱ','112451',30]],
+    '日': [['利用者06','身体01Ⅱ','118527',20],['利用者41','身体01Ⅱ','118527',20],['利用者39','身体1Ⅱ','112451',30],['利用者05','身体01Ⅱ','118527',20],['利用者28','身体01Ⅱ','118527',20],['利用者37','身体1Ⅱ','112451',30],['利用者23','身体01Ⅱ','118527',20],['利用者42','身体1Ⅱ','112451',30],['利用者02','身体1Ⅱ','112451',30],['利用者38','訪問型サービスA型Ⅰ','A31001',45],['利用者10','訪問型サービスA型Ⅰ','A31001',45],['利用者28','身体01Ⅱ','118527',20],['利用者05','身体01Ⅱ','118527',20],['利用者37','身体01Ⅱ','118527',20],['利用者39','身体1Ⅱ','112451',30],['利用者23','身体01Ⅱ','118527',20]]
+  };
+
+  // 勤務時間は元シートに無いため暫定値。確定したらここを直す。
+  const WORK_START = 8 * 60;      // 08:00
+  const WORK_END = 17 * 60 + 30;  // 17:30
+  const TRAVEL_MIN = 15;          // 外訪問の移動時間(分)
+
+  const nrm = s => String(s || '').replace(/[\s　]/g, '');
+  const USER_BY_NAME = {};
+  SHEET_USERS.forEach(([name, kubun, room]) => { USER_BY_NAME[nrm(name)] = { name, kubun, room }; });
+  const hhmm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  const toMin = t => { const m = String(t).match(/(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : 0; };
+
+  // 職員の空き時間を探す（busy と重ならない最も早い開始時刻）
+  function earliestFree(st, from, dur) {
+    let t = from;
+    st.busy.slice().sort((a, b) => a.s - b.s).forEach(b => {
+      if (t + dur > b.s && t < b.e) t = b.e;
+    });
+    return t;
+  }
+
+  // 指定日の訪問予定を組み立てる（曜日別予定 + 固定訪問 → 職員へ割当）
+  const dayCache = {};
+  function buildDay(dateStr) {
+    const date = dateStr || PREVIEW_TODAY;
+    if (dayCache[date]) return dayCache[date];
+    const wLong = previewWeekday(date);
+    const w = wLong.charAt(0);
+    const plans = SHEET_PLANS[w] || [];
+    if (!w || !plans.length) return (dayCache[date] = { schedules: [], unassigned: [] });
+
+    // その曜日の固定時刻を利用者ごとのキューにする
+    const fixedQueue = {};
+    SHEET_FIXED.forEach(f => {
+      if (f.days.indexOf(w) === -1) return;
+      const k = nrm(f.user);
+      (fixedQueue[k] = fixedQueue[k] || []).push(f);
+    });
+
+    const staff = SHEET_STAFF.map((s, i) => ({
+      id: 'S' + String(i + 1).padStart(4, '0'), name: s.name,
+      ng: s.ng.map(nrm), sunday: s.sunday, cursor: WORK_START, busy: []
+    }));
+
+    const visits = plans.map((p, i) => {
+      const key = nrm(p[0]);
+      const u = USER_BY_NAME[key];
+      // 固定時刻はサービス名が一致するものだけ紐付ける（取り違え防止）
+      const q = fixedQueue[key] || [];
+      const at = q.findIndex(f => nrm(f.service) === nrm(p[1]));
+      const fx = at >= 0 ? q.splice(at, 1)[0] : null;
+      return {
+        i, key, name: u ? u.name : p[0], service: p[1] || '（サービス名なし）', code: p[2],
+        min: p[3], kubun: (u && u.kubun === '外') ? '外部' : 'ケアハウス内',
+        unknown: !u, fixed: fx || null
+      };
+    });
+
+    // 時刻が決まっているものを先に確保する
+    visits.sort((a, b) => {
+      if (a.fixed && b.fixed) return toMin(a.fixed.start) - toMin(b.fixed.start);
+      if (a.fixed) return -1;
+      if (b.fixed) return 1;
+      return a.i - b.i;
+    });
+
+    const schedules = [], unassigned = [];
+    visits.forEach((v, n) => {
+      const blocked = [];
+      const eligible = staff.filter(st => {
+        if (w === '日' && !st.sunday) { blocked.push({ staff: st.name, reason: '日曜出勤不可' }); return false; }
+        if (st.ng.indexOf(v.key) !== -1) { blocked.push({ staff: st.name, reason: '訪問不可（NG設定）' }); return false; }
+        return true;
+      });
+
+      let picked = null, start = 0;
+      if (v.fixed) {
+        const s = toMin(v.fixed.start), e = toMin(v.fixed.end);
+        const free = eligible.filter(st => !st.busy.some(b => s < b.e && e > b.s));
+        eligible.filter(st => st.busy.some(b => s < b.e && e > b.s))
+          .forEach(st => blocked.push({ staff: st.name, reason: '時間重複' }));
+        if (free.length) { picked = free[0]; start = s; }
+      } else {
+        // 早く空く職員を優先し、同じなら訪問件数の少ない職員へ（負担の平準化）
+        const cands = eligible.map(st => ({ st, s: earliestFree(st, st.cursor, v.min) }))
+          .sort((a, b) => (a.s - b.s) || (a.st.busy.length - b.st.busy.length));
+        const ok = cands.filter(c => c.s + v.min <= WORK_END);
+        cands.filter(c => c.s + v.min > WORK_END)
+          .forEach(c => blocked.push({ staff: c.st.name, reason: '勤務時間外' }));
+        if (ok.length) { picked = ok[0].st; start = ok[0].s; }
+      }
+
+      if (!picked) {
+        const s = v.fixed ? toMin(v.fixed.start) : WORK_START;
+        unassigned.push({
+          '未割当ID': `U${n}-${date}`, '日付': date, '曜日': wLong, '利用者名': v.name,
+          'サービス種別': v.service, '希望開始時刻': hhmm(s), '希望終了時刻': hhmm(s + v.min),
+          '対応状況': '未対応',
+          reasons: blocked.length ? blocked : [{ staff: '', reason: '空いている職員がいません' }],
+          altCandidates: eligible.map(st => ({ staff: st.name, note: '別の時間帯なら対応可' })),
+          timeCandidates: eligible.slice(0, 2).map(st => ({ staff: st.name, time: hhmm(earliestFree(st, st.cursor, v.min)) }))
+        });
+        return;
+      }
+
+      const end = start + v.min;
+      const lastEnd = picked.busy.reduce((mx, b) => Math.max(mx, b.e), 0);
+      const shortTravel = v.kubun === '外部' && lastEnd > 0 && (start - lastEnd) < TRAVEL_MIN;
+      const warn = v.unknown ? '利用者マスタに未登録' : (shortTravel ? '移動時間不足' : '');
+      // 外訪問は移動時間を含めて塞ぐ。固定訪問では cursor を進めない
+      // （午後の固定を持っただけで午前が空いたままになるのを防ぐ）
+      const pad = v.kubun === '外部' ? TRAVEL_MIN : 0;
+      picked.busy.push({ s: start, e: end + pad });
+      if (!v.fixed) picked.cursor = end + pad;
+      schedules.push({
+        '訪問予定ID': `V${n}-${date}`, '日付': date, '曜日': wLong,
+        '開始時刻': hhmm(start), '終了時刻': hhmm(end), '利用者名': v.name,
+        'サービス種別': v.service, '職員ID': picked.id, '職員名': picked.name,
+        '訪問区分': v.kubun, '移動時間': v.kubun === '外部' ? TRAVEL_MIN : 0,
+        'ステータス': warn ? '要確認' : '仮作成', '警告': warn
+      });
+    });
+
+    schedules.sort((a, b) => toMin(a['開始時刻']) - toMin(b['開始時刻']));
+    return (dayCache[date] = { schedules, unassigned });
+  }
+
+  function sampleSchedules(dateStr) { return buildDay(dateStr).schedules; }
+  function sampleUnassigned(dateStr) { return buildDay(dateStr).unassigned; }
+
+  // 取り込み時の確認事項（利用者マスタに無い名前を実データから拾う）
+  function importIssues() {
+    const unknown = {};
+    Object.keys(SHEET_PLANS).forEach(w => {
+      SHEET_PLANS[w].forEach(p => {
+        if (!USER_BY_NAME[nrm(p[0])]) unknown[p[0]] = (unknown[p[0]] || []).concat(w);
+      });
+    });
+    const issues = Object.keys(unknown).map(n =>
+      `「${n}」（${unknown[n].join('・')}曜日）が利用者一覧にありません。氏名の表記ゆれか、登録漏れの可能性があります。`);
+
+    // 固定訪問シートと曜日別シートの食い違いを検出する
+    SHEET_FIXED.forEach(f => {
+      Array.prototype.forEach.call(f.days, w => {
+        const list = SHEET_PLANS[w] || [];
+        const hit = list.some(p => nrm(p[0]) === nrm(f.user) && nrm(p[1]) === nrm(f.service));
+        if (!hit) issues.push(`${w}曜日の「${f.user}」: 固定訪問は「${f.service} ${f.start}〜」ですが、曜日別シートに同じサービスがありません。時刻を自動では当てはめていません。`);
+      });
+    });
+    return issues;
+  }
+  const RESP = {
+    getAppBootstrap: () => ({ ok:true, user:{name:'管理者', role:'管理者'}, token:'preview-token', spreadsheetUrl:'#', today:PREVIEW_TODAY, defaultPasswordActive:true }),
+    changeMyPassword: () => ({ ok:true }),
+    loginUser: () => ({ token:'t', user:{name:'管理者', role:'管理者'} }),
+    logoutUser: () => ({ ok:true }),
+    getDashboard: (token, date) => {
+      const d = date || PREVIEW_TODAY;
+      const rows = sampleSchedules(d);
+      return {
+        user:{}, date:d,
+        visitCount: rows.length,
+        unassignedCount: sampleUnassigned(d).length,
+        warningCount: rows.filter(r => r['警告']).length,
+        internalCount: rows.filter(r => r['訪問区分'] === 'ケアハウス内').length,
+        externalCount: rows.filter(r => r['訪問区分'] !== 'ケアハウス内').length,
+        staffCounts:{}, schedules: rows
+      };
+    },
+    getSchedules: (token, params) => {
+      const p = params || {};
+      const start = p.startDate || PREVIEW_TODAY;
+      const days = previewRange(start, p.endDate || start);
+      return {
+        schedules: p.mode === 'unassigned' ? [] : days.reduce((a, d) => a.concat(sampleSchedules(d)), []),
+        // 未割当は件数が多くなりすぎないよう先頭3日分だけ返す
+        unassigned: p.mode === 'schedules' ? [] : days.slice(0, 3).reduce((a, d) => a.concat(sampleUnassigned(d)), [])
+      };
+    },
+    listMaster: (token, name) => {
+      if (name === 'users') {
+        const rows = SHEET_USERS.map(([n, k, room], i) => ({
+          '利用者ID': 'U' + String(i + 1).padStart(4, '0'), '氏名': n,
+          '訪問区分': k === '外' ? '外訪問' : 'ケアハウス内', '部屋番号': room
+        }));
+        return { master:'users', key:'利用者ID', headers:['利用者ID','氏名','訪問区分','部屋番号'], rows, total: rows.length };
+      }
+      if (name === 'servicePlans') {
+        const rows = [];
+        Object.keys(SHEET_PLANS).forEach(w => SHEET_PLANS[w].forEach((p, i) => rows.push({
+          '予定ID': `${w}${i + 1}`, '曜日': w, '氏名': p[0], 'サービス名': p[1], 'サービスコード': p[2], '時間(分)': p[3]
+        })));
+        return { master:'servicePlans', key:'予定ID', headers:['予定ID','曜日','氏名','サービス名','サービスコード','時間(分)'], rows, total: rows.length };
+      }
+      const rows = SHEET_STAFF.map((s, i) => ({
+        '職員ID': 'S' + String(i + 1).padStart(4, '0'), '氏名': s.name,
+        '日曜出勤': s.sunday ? '可' : '不可', '訪問できない人': s.ng.join('、') || 'なし'
+      }));
+      return { master:'staff', key:'職員ID', headers:['職員ID','氏名','日曜出勤','訪問できない人'], rows, total: rows.length };
+    },
+    getMasterRecord: () => ({ record:{'職員ID':'S0001','氏名':'職員01'}, headers:['職員ID','氏名'], key:'職員ID' }),
+    saveMasterRecord: () => ({ ok:true }),
+    runImportExistingData: () => {
+      const planCount = Object.keys(SHEET_PLANS).reduce((n, w) => n + SHEET_PLANS[w].length, 0);
+      return {
+        users: { count: SHEET_USERS.length, errors: [] },
+        staff: { count: SHEET_STAFF.length, errors: [] },
+        shifts: { count: 0, errors: ['各職員の勤務時間（開始・終了）が元シートにありません。暫定で 8:00〜17:30 として予定を作成します。'] },
+        servicePlans: { count: planCount, skipped: 0, errors: importIssues() }
+      };
+    },
+    runAutoCreate: (token, params) => {
+      const p = params || {};
+      let start = p.startDate, end = p.endDate || p.startDate;
+      if (p.month) {
+        const q = p.month.split('-').map(Number);
+        start = `${q[0]}-${String(q[1]).padStart(2, '0')}-01`;
+        const last = new Date(q[0], q[1], 0);
+        end = `${q[0]}-${String(q[1]).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`;
+      }
+      let created = 0, unassigned = 0;
+      previewRange(start || PREVIEW_TODAY, end || PREVIEW_TODAY).forEach(d => {
+        const r = buildDay(d);
+        created += r.schedules.length;
+        unassigned += r.unassigned.length;
+      });
+      return { ok:true, created, unassigned, status:'仮作成', message:'自動作成が完了しました。' };
+    },
+    confirmSchedules: () => ({ ok:true, count:396 }),
+    updateSchedule: () => ({ ok:true, schedule:{} }),
+    cancelSchedule: () => ({ ok:true }),
+    markUnassignedHandled: () => ({ ok:true }),
+    assignUnassigned: () => ({ ok:true }),
+    setupApp: () => ({ ok:true, message:'APP用シートと初期データを準備しました。' }),
+    exportCsv: () => ({ url:'#csv' }),
+    createDailyPdf: () => ({ url:'#pdf' }),
+    getExcelExportUrl: () => ({ url:'#xlsx' })
+  };
+  // 本物の google.script.run と同じく、呼び出しごとに独立したハンドラを持たせる。
+  // （ハンドラを1つだけ共有すると、同時に2つ実行したとき応答が入れ替わる）
+  function makePreviewRunner(onOk, onFail) {
+    return new Proxy({}, {
+      get(_t, prop) {
+        if (prop === 'withSuccessHandler') return (cb) => makePreviewRunner(cb, onFail);
+        if (prop === 'withFailureHandler') return (cb) => makePreviewRunner(onOk, cb);
+        return (...args) => {
+          const fn = RESP[prop];
+          setTimeout(() => {
+            try { const r = fn ? fn(...args) : {}; if (onOk) onOk(r); }
+            catch (e) { if (onFail) onFail(e); }
+          }, prop === 'runAutoCreate' ? 1200 : 250);
+        };
+      }
+    });
+  }
+  window.google = { script: { run: makePreviewRunner(null, null) } };
+</script>
+<script>
+  const state = {
+    token: localStorage.getItem('helperScheduleToken') || '',
+    user: null,
+    today: '',
+    mode: localStorage.getItem('helperScheduleMode') || 'month',
+    lastRange: null,
+    staffNames: [],
+    currentMaster: null,
+    masterHeaders: [],
+    masterKey: '',
+    editingRecord: {},
+    isBusy: false,
+    busyTimer: null,
+    modalOk: null,
+    lastFocus: null,
+    imported: false,
+    // 読込の世代番号。遅れて返ってきた古い応答が新しい表示を上書きしないようにする。
+    seq: { dashboard: 0, schedules: 0, unassigned: 0 }
+  };
+
+  // 状態名は定数で一元管理（画面表示と保存値のズレを防ぐ）
+  const STATUS = {
+    DRAFT: '仮作成',
+    REVIEW: '要確認',
+    FIXED: '確定',
+    CHANGED: '変更済',
+    UNASSIGNED: '未割当'
+  };
+  // 状態名 → バッジ用CSSクラス
+  const STATUS_CLASS = {
+    [STATUS.DRAFT]: 's-draft',
+    [STATUS.REVIEW]: 's-review',
+    [STATUS.FIXED]: 's-fixed',
+    [STATUS.CHANGED]: 's-changed'
+  };
+  function statusClass(status) { return STATUS_CLASS[status] || 's-draft'; }
+
+  // CSV種別の補足説明
+  const CSV_HINTS = {
+    schedules: '確定/仮作成を含む訪問予定の一覧を出力します。',
+    unassigned: '担当が決まっていない訪問と、その理由を出力します。',
+    changes: '担当変更・時間変更・取消などの操作履歴を出力します。'
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    bindEvents();
+    bootstrap();
+  });
+
+  function bindEvents() {
+    document.getElementById('loginForm').addEventListener('submit', onLogin);
+    document.getElementById('logoutButton').addEventListener('click', onLogout);
+    document.querySelectorAll('.tabs button').forEach(button => {
+      button.addEventListener('click', () => showView(button.dataset.view));
+    });
+    document.getElementById('reloadDashboard').addEventListener('click', loadDashboard);
+    document.getElementById('todayButton').addEventListener('click', () => {
+      document.getElementById('dashboardDate').value = state.today;
+      loadDashboard();
+    });
+    // 対象日を変えたら「更新」を押さなくてもすぐ反映する
+    document.getElementById('dashboardDate').addEventListener('change', loadDashboard);
+    // 日別・未割当も期間を変えたら自動で読み直す
+    ['scheduleStart', 'scheduleEnd'].forEach(id => {
+      document.getElementById(id).addEventListener('change', loadSchedules);
+    });
+    ['unassignedStart', 'unassignedEnd'].forEach(id => {
+      document.getElementById(id).addEventListener('change', loadUnassigned);
+    });
+    document.getElementById('setupButton').addEventListener('click', setupApp);
+    document.getElementById('importButton').addEventListener('click', importExisting);
+    document.getElementById('autoPreview').addEventListener('click', runAutoCreate);
+    document.getElementById('confirmButton').addEventListener('click', confirmRange);
+    document.getElementById('reloadSchedules').addEventListener('click', loadSchedules);
+    document.getElementById('reloadUnassigned').addEventListener('click', loadUnassigned);
+    document.getElementById('loadMaster').addEventListener('click', loadMaster);
+    document.getElementById('newMaster').addEventListener('click', newMasterRecord);
+    document.getElementById('csvButton').addEventListener('click', exportCsvFile);
+    document.getElementById('pdfButton').addEventListener('click', exportPdfFile);
+    document.getElementById('excelButton').addEventListener('click', getExcelUrl);
+    const csvType = document.getElementById('csvType');
+    csvType.addEventListener('change', updateCsvHint);
+    updateCsvHint();
+
+    // 月/日 切替
+    document.getElementById('modeMonth').addEventListener('click', () => { showMode('month'); });
+    document.getElementById('modeDay').addEventListener('click', () => { showMode('day'); });
+    document.getElementById('thisMonth').addEventListener('click', () => { setMonth(0); });
+    document.getElementById('nextMonth').addEventListener('click', () => { setMonth(1); });
+    document.getElementById('autoMonth').addEventListener('change', updateMonthEcho);
+
+    // モーダル
+    document.getElementById('modalCancel').addEventListener('click', closeModal);
+    document.getElementById('modalOk').addEventListener('click', () => { if (state.modalOk) state.modalOk(); });
+    document.getElementById('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
+    document.getElementById('modal').addEventListener('keydown', trapModalKeydown);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+    // パスワード変更
+    document.getElementById('pwChange').addEventListener('click', openChangePassword);
+
+    // 使い方ガイド
+    document.getElementById('helpButton').addEventListener('click', openGuide);
+    document.getElementById('guideClose').addEventListener('click', hideGuide);
+    document.getElementById('guideStart').addEventListener('click', () => { hideGuide(); showView('auto'); });
+  }
+
+  // ===== 使い方ガイド（オンボーディング） =====
+  // 一度「閉じる」を押したら次回から自動では出さない。ただし「？使い方」でいつでも開ける。
+  function maybeShowGuide() {
+    const dismissed = localStorage.getItem('helperGuideHidden') === '1';
+    document.getElementById('guide').classList.toggle('hidden', dismissed);
+  }
+  function openGuide() {
+    showView('dashboard');
+    const g = document.getElementById('guide');
+    g.classList.remove('hidden');
+    g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function hideGuide() {
+    document.getElementById('guide').classList.add('hidden');
+    localStorage.setItem('helperGuideHidden', '1');
+  }
+
+  function server(functionName, ...args) {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(error => reject(error))
+        [functionName](...args);
+    });
+  }
+
+  async function bootstrap() {
+    try {
+      const data = await server('getAppBootstrap', state.token);
+      state.today = data.today;
+      setDefaultDates(data.today);
+      document.getElementById('sheetLink').href = data.spreadsheetUrl;
+      if (data.user) {
+        // getAppBootstrap がトークンを返す環境（プレビュー等）ではそれを採用する。
+        // 本番GASは token を返さないため、この行は何もしない。
+        if (data.token && !state.token) state.token = data.token;
+        state.user = data.user;
+        showApp();
+        showMode(state.mode);
+        togglePwWarn(data.defaultPasswordActive);
+        maybeShowGuide();
+        await loadStaffNames();
+        await loadDashboard();
+      } else {
+        showLogin();
+      }
+    } catch (error) {
+      showLogin();
+      toast(friendlyError(error));
+    }
+  }
+
+  function setDefaultDates(today) {
+    ['dashboardDate', 'autoDay', 'scheduleStart', 'scheduleEnd', 'unassignedStart', 'unassignedEnd', 'outputStart', 'outputEnd'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && !el.value) el.value = today;
+    });
+    const m = document.getElementById('autoMonth');
+    if (m && !m.value) m.value = String(today).slice(0, 7);
+    updateMonthEcho();
+  }
+
+  async function onLogin(event) {
+    event.preventDefault();
+    try {
+      const result = await server('loginUser', val('loginId'), val('password'));
+      state.token = result.token;
+      state.user = result.user;
+      localStorage.setItem('helperScheduleToken', state.token);
+      showApp();
+      showMode(state.mode);
+      maybeShowGuide();
+      await refreshPwWarn();
+      await loadStaffNames();
+      await loadDashboard();
+    } catch (error) {
+      toast(friendlyError(error));
+    }
+  }
+
+  function togglePwWarn(active) {
+    document.getElementById('pwWarn').classList.toggle('hidden', !active);
+  }
+
+  async function refreshPwWarn() {
+    try {
+      const data = await server('getAppBootstrap', state.token);
+      togglePwWarn(data.defaultPasswordActive);
+    } catch (e) { /* 警告取得失敗時は何もしない */ }
+  }
+
+  function openChangePassword() {
+    openModal('パスワードを変更',
+      `<label>現在のパスワード<input id="m_cur" type="password" autocomplete="current-password"></label>
+       <label>新しいパスワード（6文字以上）<input id="m_new" type="password" autocomplete="new-password"></label>
+       <label>新しいパスワード（確認）<input id="m_new2" type="password" autocomplete="new-password"></label>`,
+      async () => {
+        const cur = document.getElementById('m_cur').value;
+        const next = document.getElementById('m_new').value;
+        const next2 = document.getElementById('m_new2').value;
+        if (next.length < 6) { toast('新しいパスワードは6文字以上にしてください。'); return; }
+        if (next !== next2) { toast('新しいパスワード（確認）が一致しません。'); return; }
+        closeModal();
+        showBusy('パスワードを変更しています…');
+        try {
+          await server('changeMyPassword', state.token, cur, next);
+          togglePwWarn(false);
+          toast('パスワードを変更しました。');
+        } catch (error) {
+          toast(friendlyError(error));
+        } finally {
+          hideBusy();
+        }
+      }, '変更する');
+  }
+
+  async function onLogout() {
+    await server('logoutUser', state.token).catch(() => {});
+    localStorage.removeItem('helperScheduleToken');
+    state.token = '';
+    state.user = null;
+    showLogin();
+  }
+
+  function showLogin() {
+    document.getElementById('loginView').classList.remove('hidden');
+    document.getElementById('appView').classList.add('hidden');
+  }
+
+  function showApp() {
+    document.getElementById('loginView').classList.add('hidden');
+    document.getElementById('appView').classList.remove('hidden');
+    document.getElementById('userBadge').textContent = `${state.user.name} / ${state.user.role}`;
+  }
+
+  function showView(name) {
+    document.querySelectorAll('.tabs button').forEach(button => button.classList.toggle('active', button.dataset.view === name));
+    document.querySelectorAll('.view').forEach(view => view.classList.toggle('active', view.id === name));
+    if (name === 'dashboard') loadDashboard();
+    if (name === 'daily') loadSchedules();
+    if (name === 'unassigned') loadUnassigned();
+    if (name === 'masters' && !state.currentMaster) loadMaster();
+  }
+
+  // ===== 月/日 切替 =====
+  function showMode(mode) {
+    state.mode = (mode === 'day') ? 'day' : 'month';
+    localStorage.setItem('helperScheduleMode', state.mode);
+    document.getElementById('modeMonth').classList.toggle('active', state.mode === 'month');
+    document.getElementById('modeDay').classList.toggle('active', state.mode === 'day');
+    document.getElementById('modeMonth').setAttribute('aria-checked', state.mode === 'month');
+    document.getElementById('modeDay').setAttribute('aria-checked', state.mode === 'day');
+    document.getElementById('monthPane').classList.toggle('hidden', state.mode !== 'month');
+    document.getElementById('dayPane').classList.toggle('hidden', state.mode !== 'day');
+  }
+
+  function setMonth(offset) {
+    const base = val('autoMonth') || String(state.today).slice(0, 7);
+    const parts = base.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1 + offset, 1);
+    document.getElementById('autoMonth').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    updateMonthEcho();
+  }
+
+  function updateMonthEcho() {
+    const m = val('autoMonth');
+    const echo = document.getElementById('monthEcho');
+    if (!m) { echo.textContent = ''; return; }
+    const parts = m.split('-');
+    echo.textContent = `${parts[0]}年${Number(parts[1])}月をまとめて作成します`;
+  }
+
+  // ===== 取込 =====
+  async function importExisting() {
+    if (state.isBusy) return;
+    showBusy('既存シートを取り込んでいます…（最大1分）');
+    try {
+      const r = await server('runImportExistingData', state.token);
+      const sp = r.servicePlans || {};
+      document.getElementById('resultCard').classList.remove('hidden');
+      document.getElementById('resultCard').innerHTML = importSummaryHtml(r);
+      renderAutoSummary(r);
+      // 取込が終わったら「作成」を主ボタンとして有効化し、取込ボタンは控えめに
+      state.imported = true;
+      const importBtn = document.getElementById('importButton');
+      importBtn.classList.remove('big');
+      importBtn.classList.add('ghost');
+      importBtn.classList.remove('primary');
+      importBtn.textContent = '再取込';
+      const autoBtn = document.getElementById('autoPreview');
+      autoBtn.disabled = false;
+      document.getElementById('autoHint').textContent = '※ 作成だけでは確定しません。内容を確認してから「確定」してください。';
+      updateStepper(2);
+      await loadStaffNames();
+      toast(`取込完了: 利用者${r.users.count} / 職員${r.staff.count} / 勤務${r.shifts.count} / 予定${sp.count}`);
+    } catch (error) {
+      toast(friendlyError(error));
+    } finally {
+      hideBusy();
+    }
+  }
+
+  function importSummaryHtml(r) {
+    const sp = r.servicePlans || {};
+    const errs = [].concat(r.users.errors || [], r.staff.errors || [], r.shifts.errors || [], sp.errors || []);
+    let html = `<div class="nums">
+      <div class="num"><strong>${escapeHtml(r.users.count)}</strong>利用者</div>
+      <div class="num"><strong>${escapeHtml(r.staff.count)}</strong>職員</div>
+      <div class="num"><strong>${escapeHtml(r.shifts.count)}</strong>勤務予定</div>
+      <div class="num"><strong>${escapeHtml(sp.count)}</strong>サービス予定</div>
+    </div>
+    <p class="help">重複した予定を ${escapeHtml(sp.skipped || 0)} 件まとめました。次は「② 予定を作成する」へ進んでください。</p>`;
+    if (errs.length) {
+      html += `<details class="advanced"><summary>確認事項 ${errs.length}件（管理者向け）</summary><p class="ua-reason">${escapeHtml(errs.slice(0, 30).join('\n'))}</p></details>`;
+    }
+    return html;
+  }
+
+  // ===== 自動作成 =====
+  async function runAutoCreate() {
+    if (state.isBusy) return;
+    const params = {
+      serviceTypes: val('serviceTypes'),
+      includeHelpers: document.getElementById('includeHelpers').checked,
+      overwrite: document.getElementById('overwrite').checked,
+      confirm: false
+    };
+    let label;
+    if (state.mode === 'day') {
+      const d = val('autoDay');
+      if (!d) { toast('対象の日を選んでください。'); return; }
+      params.startDate = d; params.endDate = d;
+      state.lastRange = { startDate: d, endDate: d };
+      label = `${d} の予定`;
+    } else {
+      const m = val('autoMonth');
+      if (!m) { toast('対象の月を選んでください。'); return; }
+      params.month = m; params.overwrite = true;
+      state.lastRange = monthBounds(m);
+      label = `${m} の予定`;
+    }
+    const btn = document.getElementById('autoPreview');
+    btn.disabled = true;
+    showBusy(`${label}を作成しています…（最大1〜2分）`);
+    try {
+      const result = await server('runAutoCreate', state.token, params);
+      renderResultCard(result);
+      document.getElementById('confirmButton').disabled = (result.created || 0) === 0;
+      updateStepper(3);
+      syncRangesTo(state.lastRange);
+      await loadDashboard();
+      toast(`作成 ${result.created}件 / 未割当 ${result.unassigned}件`);
+    } catch (error) {
+      toast(friendlyError(error));
+    } finally {
+      hideBusy();
+      btn.disabled = false;
+    }
+  }
+
+  function renderResultCard(r) {
+    const days = state.lastRange ? daysBetween(state.lastRange.startDate, state.lastRange.endDate) : 1;
+    const card = document.getElementById('resultCard');
+    card.classList.remove('hidden');
+    const warnCls = (r.unassigned > 0) ? 'warn' : '';
+    let html = `<div class="nums">
+      <div class="num"><strong>${escapeHtml(r.created)}</strong>作成</div>
+      <div class="num ${warnCls}"><strong>${escapeHtml(r.unassigned)}</strong>未割当</div>
+      <div class="num"><strong>${days}</strong>対象日数</div>
+    </div>`;
+    if (r.unassigned > 0) {
+      html += `<p class="help">未割当があります。理由・代替候補・時間変更候補を確認してください。</p>
+        <button class="primary go-unassigned" onclick="goUnassigned()">未割当を確認する →</button>`;
+    } else {
+      html += `<p class="help" style="color:var(--ok)">未割当はありません。「日別」タブで確認して確定してください。</p>`;
+    }
+    card.innerHTML = html;
+  }
+
+  function goUnassigned() {
+    showView('unassigned');
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === 'unassigned'));
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'unassigned'));
+    loadUnassigned();
+  }
+
+  // ステップ表示の更新。current = いま実行すべきステップ番号(1〜4)
+  function updateStepper(current) {
+    document.querySelectorAll('#stepper .step').forEach(li => {
+      const n = Number(li.dataset.step);
+      const tag = li.querySelector('.step-tag');
+      li.classList.remove('done', 'current');
+      if (n < current) { li.classList.add('done'); if (tag) tag.textContent = '完了'; }
+      else if (n === current) { li.classList.add('current'); if (tag) tag.textContent = '実行中'; }
+      else if (tag) { tag.textContent = '未着手'; }
+    });
+  }
+
+  // 取込結果から自動作成画面のサマリーカードを描画
+  function renderAutoSummary(r) {
+    const sp = r.servicePlans || {};
+    const errs = [].concat(r.users.errors || [], r.staff.errors || [], r.shifts.errors || [], sp.errors || []);
+    const cards = [
+      ['利用者', r.users.count, '', r.users.errors && r.users.errors.length],
+      ['職員', r.staff.count, '', r.staff.errors && r.staff.errors.length],
+      ['勤務予定', r.shifts.count, '', r.shifts.errors && r.shifts.errors.length],
+      ['サービス予定', sp.count, '', sp.errors && sp.errors.length],
+      ['まとめた重複', sp.skipped || 0, '', 0],
+      ['要確認', errs.length, errs.length ? 'warn' : 'ok', 0]
+    ];
+    const el = document.getElementById('autoSummary');
+    el.classList.remove('hidden');
+    el.innerHTML = cards.map(([label, value, cls, hasWarn]) => {
+      const badge = hasWarn ? ' <span class="status s-review">要確認</span>' : '';
+      return `<div class="summary-card ${cls}"><span>${escapeHtml(label)}${badge}</span><strong>${escapeHtml(value)}</strong></div>`;
+    }).join('');
+  }
+
+  function updateCsvHint() {
+    const t = val('csvType');
+    const el = document.getElementById('csvHint');
+    if (el) el.textContent = CSV_HINTS[t] || '';
+  }
+
+  async function confirmRange() {
+    const range = state.lastRange;
+    if (!range) { toast('先に予定を作成してください。'); return; }
+    openModal('予定を確定します',
+      `<p>${escapeHtml(range.startDate)} 〜 ${escapeHtml(range.endDate)} の予定を確定します。よろしいですか？</p>
+       <p class="help">確定後も修正はできますが、正式な予定として扱われます。</p>`,
+      async () => {
+        closeModal();
+        if (state.isBusy) return;
+        showBusy('確定しています…');
+        try {
+          const res = await server('confirmSchedules', state.token, range.startDate, range.endDate);
+          updateStepper(4);
+          toast(`${res.count}件を確定しました。`);
+          await loadDashboard();
+        } catch (error) {
+          toast(friendlyError(error));
+        } finally {
+          hideBusy();
+        }
+      }, '確定する');
+  }
+
+  async function setupApp() {
+    openModal('APPシートを初期化します',
+      `<p class="warn-text">アプリ用シートと初期データを作り直します。通常は使いません。</p><p>実行しますか？</p>`,
+      () => {
+        closeModal();
+        openModal('本当に初期化しますか？',
+          `<p class="warn-text">この操作は元に戻せません。</p>`,
+          async () => {
+            closeModal();
+            showBusy('初期化しています…');
+            try {
+              const r = await server('setupApp');
+              toast(r.message || '初期化しました。');
+            } catch (error) {
+              toast(friendlyError(error));
+            } finally {
+              hideBusy();
+            }
+          }, '初期化する');
+      }, '次へ');
+  }
+
+  // ===== ダッシュボード =====
+  async function loadDashboard() {
+    if (!state.token) return;
+    const my = ++state.seq.dashboard;
+    const date = val('dashboardDate') || state.today;
+    try {
+      const data = await server('getDashboard', state.token, date);
+      if (my !== state.seq.dashboard) return; // 古い応答は破棄
+      updateDashboardTitles(data.date || date);
+      renderSummary(data);
+      renderTimeline(data.schedules);
+      renderScheduleTable('todayTable', data.schedules, true);
+    } catch (error) {
+      toast(friendlyError(error));
+    }
+  }
+
+  // 見出しを選択中の日付に合わせる（今日なら「本日」と表示）
+  function updateDashboardTitles(dateStr) {
+    const p = String(dateStr || '').split('-').map(Number);
+    let label = '選択日';
+    if (p.length === 3 && p[0]) {
+      const d = new Date(p[0], p[1] - 1, p[2]);
+      const w = ['日', '月', '火', '水', '木', '金', '土'][d.getDay()];
+      label = (dateStr === state.today) ? '本日' : `${p[1]}月${p[2]}日(${w})`;
+    }
+    const t1 = document.getElementById('timelineTitle');
+    const t2 = document.getElementById('todayTableTitle');
+    if (t1) t1.textContent = `${label}の職員別タイムライン`;
+    if (t2) t2.textContent = `${label}の全体予定`;
+  }
+
+  function renderSummary(data) {
+    const cards = [
+      ['訪問件数', data.visitCount, 'ok'],
+      ['未割当件数', data.unassignedCount, data.unassignedCount ? 'warn' : 'ok'],
+      ['警告件数', data.warningCount, data.warningCount ? 'warn' : 'ok'],
+      ['ケアハウス内', data.internalCount, ''],
+      ['外部訪問', data.externalCount, '']
+    ];
+    document.getElementById('summaryCards').innerHTML = cards.map(([label, value, cls]) => (
+      `<div class="summary-card ${cls}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`
+    )).join('');
+  }
+
+  function renderTimeline(rows) {
+    const byStaff = {};
+    rows.forEach(row => {
+      const name = row['職員名'] || '未割当';
+      byStaff[name] = byStaff[name] || [];
+      byStaff[name].push(row);
+    });
+    const start = 7 * 60;
+    const end = 19 * 60;
+    const html = Object.keys(byStaff).sort().map(name => {
+      const cards = byStaff[name].map(row => {
+        const s = minutes(row['開始時刻']);
+        const e = minutes(row['終了時刻']);
+        const left = Math.max(0, (s - start) / (end - start) * 100);
+        const width = Math.max(5, (e - s) / (end - start) * 100);
+        const warn = row['警告'] ? 'warn' : '';
+        return `<div class="visit-card ${warn}" style="left:${left}%;width:${width}%" title="${escapeAttr(row['利用者名'] + ' ' + (row['警告'] || ''))}"><strong>${escapeHtml(row['利用者名'])}</strong><br>${escapeHtml(row['開始時刻'])} ${escapeHtml(row['サービス種別'])}</div>`;
+      }).join('');
+      return `<div class="lane"><div class="lane-name">${escapeHtml(name)}</div><div class="lane-track">${cards}</div></div>`;
+    }).join('');
+    document.getElementById('timeline').innerHTML = html || emptyScheduleState('この日の予定はまだありません。まずは「自動作成」で作りましょう。');
+  }
+
+  async function loadSchedules() {
+    const my = ++state.seq.schedules;
+    try {
+      const data = await server('getSchedules', state.token, {
+        startDate: val('scheduleStart'),
+        endDate: val('scheduleEnd'),
+        mode: 'schedules'
+      });
+      if (my !== state.seq.schedules) return; // 古い応答は破棄
+      renderScheduleTable('scheduleTable', data.schedules, true);
+    } catch (error) {
+      toast(friendlyError(error));
+    }
+  }
+
+  async function loadUnassigned() {
+    const my = ++state.seq.unassigned;
+    try {
+      const data = await server('getSchedules', state.token, {
+        startDate: val('unassignedStart'),
+        endDate: val('unassignedEnd'),
+        mode: 'unassigned'
+      });
+      if (my !== state.seq.unassigned) return; // 古い応答は破棄
+      renderUnassignedTable(data.unassigned);
+    } catch (error) {
+      toast(friendlyError(error));
+    }
+  }
+
+  function renderScheduleTable(targetId, rows, withActions) {
+    const headers = ['日付', '曜日', '開始時刻', '終了時刻', '利用者名', 'サービス種別', '職員名', '訪問区分', '移動時間', 'ステータス', '警告'];
+    const actionHeader = withActions ? '<th>操作</th>' : '';
+    const body = rows.map(row => {
+      const hasWarn = !!row['警告'] || row['ステータス'] === STATUS.REVIEW;
+      const rowCls = hasWarn ? ' class="warning-row"' : '';
+      const cells = headers.map(h => {
+        if (h === '警告') {
+          return `<td data-label="警告" class="${row['警告'] ? 'warning' : ''}">${escapeHtml(row[h] || (hasWarn ? '' : '—'))}</td>`;
+        }
+        if (h === 'ステータス') {
+          return `<td data-label="ステータス"><span class="status ${statusClass(row[h])}">${escapeHtml(row[h])}</span></td>`;
+        }
+        return `<td data-label="${escapeAttr(h)}">${escapeHtml(row[h])}</td>`;
+      }).join('');
+      const actions = withActions
+        ? `<td data-label="操作"><div class="row-actions">
+             <button onclick="editSchedule('${escapeAttr(row['訪問予定ID'])}')">修正</button>
+             <button class="cancel" onclick="cancelVisit('${escapeAttr(row['訪問予定ID'])}')">取消</button>
+           </div></td>`
+        : '';
+      return `<tr${rowCls}>${cells}${actions}</tr>`;
+    }).join('');
+    document.getElementById(targetId).innerHTML = rows.length
+      ? `<table class="resp"><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}${actionHeader}</tr></thead><tbody>${body}</tbody></table>`
+      : emptyScheduleState('予定がありません。「自動作成」で作成できます。');
+    window.__lastSchedules = rows;
+  }
+
+  // 未割当データを構造化（バックエンドが構造化済みならそれを使い、文字列ならパースする）
+  function normalizeUnassigned(r) {
+    const reasons = Array.isArray(r.reasons) ? r.reasons
+      : String(r['未割当理由'] || '').split(/\n+/).map(s => s.trim()).filter(Boolean).map(line => {
+          const m = line.match(/^(.+?)\s*[:：]\s*(.+)$/);
+          return m ? { staff: m[1].trim(), reason: m[2].trim() } : { staff: '', reason: line };
+        });
+    const alts = Array.isArray(r.altCandidates) ? r.altCandidates
+      : String(r['代替候補職員'] || '').split(/[、,\n]+/).map(s => s.trim()).filter(s => s && s !== 'なし').map(seg => {
+          const m = seg.match(/^(.+?)（(.+)）$/);
+          return m ? { staff: m[1].trim(), note: m[2].trim() } : { staff: seg, note: '' };
+        });
+    const times = Array.isArray(r.timeCandidates) ? r.timeCandidates
+      : String(r['時間変更候補'] || '').split(/[、,\n]+/).map(s => s.trim()).filter(s => s && s !== 'なし').map(seg => {
+          const m = seg.match(/^([\d:：]+)\s*[（(]?(.*?)[）)]?$/);
+          return m ? { time: m[1].replace('：', ':'), staff: (m[2] || '').trim() } : { time: seg, staff: '' };
+        });
+    return {
+      id: r['未割当ID'], date: r['日付'], weekday: r['曜日'], user: r['利用者名'], service: r['サービス種別'],
+      start: r['希望開始時刻'], end: r['希望終了時刻'], status: r['対応状況'] || STATUS.UNASSIGNED,
+      reasons, alts, times
+    };
+  }
+
+  function renderUnassignedTable(rows) {
+    const el = document.getElementById('unassignedTable');
+    if (!rows.length) { el.innerHTML = emptyState('未割当はありません。'); return; }
+    const list = rows.map(normalizeUnassigned);
+    window.__unassigned = list;
+    el.innerHTML = '<div class="ua-cards">' + list.map((u, i) => {
+      const reasonChips = u.reasons.length
+        ? `<div class="chips">${u.reasons.map(x => `<span class="chip-reason">${x.staff ? `<b>${escapeHtml(x.staff)}</b>` : ''}${escapeHtml(x.reason)}</span>`).join('')}</div>`
+        : '<p class="ua-empty-sec">理由情報なし</p>';
+      const altRows = u.alts.length
+        ? u.alts.map((a, j) => `<div class="cand-row"><span class="cand-info"><b>${escapeHtml(a.staff)}</b>${a.note ? ` <span class="cand-note">⚠ ${escapeHtml(a.note)}</span>` : ''}</span><button class="primary" onclick="assignCandidate(${i},${j})">この候補で割当</button></div>`).join('')
+        : '<p class="ua-empty-sec">代替候補なし</p>';
+      const timeRows = u.times.length
+        ? u.times.map((t, j) => `<div class="cand-row"><span class="cand-info"><b>${escapeHtml(t.time)}</b>${t.staff ? `（${escapeHtml(t.staff)}）` : ''}</span><button onclick="assignTimeChange(${i},${j})">時間変更で割当</button></div>`).join('')
+        : '<p class="ua-empty-sec">時間変更候補なし</p>';
+      return `<div class="ua-card">
+        <div>
+          <h3>${escapeHtml(u.user)}（${escapeHtml(u.service)}）</h3>
+          <p class="ua-meta">${escapeHtml(u.date)} ${escapeHtml(u.weekday)} ${escapeHtml(u.start)}〜${escapeHtml(u.end)} ／ ${escapeHtml(u.status)}</p>
+        </div>
+        <div class="ua-sec"><p class="ua-sec-title">割当できない理由</p>${reasonChips}</div>
+        <div class="ua-sec"><p class="ua-sec-title">代替候補</p>${altRows}</div>
+        <div class="ua-sec"><p class="ua-sec-title">時間変更候補</p>${timeRows}</div>
+        <div class="ua-sec ua-actions"><button onclick="markHandled('${escapeAttr(u.id)}')">対応済にする</button></div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+
+  // 代替候補で割当（確認 → 保存 → 再読込）
+  function assignCandidate(i, j) {
+    const u = (window.__unassigned || [])[i];
+    if (!u) return;
+    const cand = u.alts[j];
+    openModal('代替候補で割当',
+      `<p><b>${escapeHtml(u.user)}</b> の ${escapeHtml(u.start)}〜${escapeHtml(u.end)} を <b>${escapeHtml(cand.staff)}</b> に割り当てます。</p>
+       ${cand.note ? `<p class="help warn-text">注意: ${escapeHtml(cand.note)}</p>` : ''}<p class="help">この内容で割り当てますか？</p>`,
+      async () => {
+        closeModal();
+        showBusy('割り当てています…');
+        try {
+          await server('assignUnassigned', state.token, u.id, { staff: cand.staff });
+          toast(`${cand.staff} に割り当てました。`);
+          await loadUnassigned();
+          await loadDashboard();
+        } catch (error) { toast(friendlyError(error)); }
+        finally { hideBusy(); }
+      }, '割り当てる');
+  }
+
+  // 時間変更して割当
+  function assignTimeChange(i, j) {
+    const u = (window.__unassigned || [])[i];
+    if (!u) return;
+    const t = u.times[j];
+    openModal('時間変更で割当',
+      `<p><b>${escapeHtml(u.user)}</b> を <b>${escapeHtml(t.time)}</b>${t.staff ? `（${escapeHtml(t.staff)}）` : ''} に変更して割り当てます。</p>
+       <p class="help">希望時刻（${escapeHtml(u.start)}〜${escapeHtml(u.end)}）から変更されます。よろしいですか？</p>`,
+      async () => {
+        closeModal();
+        showBusy('割り当てています…');
+        try {
+          await server('assignUnassigned', state.token, u.id, { staff: t.staff, newStart: t.time });
+          toast(`${t.time} に変更して割り当てました。`);
+          await loadUnassigned();
+          await loadDashboard();
+        } catch (error) { toast(friendlyError(error)); }
+        finally { hideBusy(); }
+      }, '割り当てる');
+  }
+
+  // ===== 手修正（モーダル） =====
+  function editSchedule(id) {
+    const row = (window.__lastSchedules || []).find(item => item['訪問予定ID'] === id);
+    if (!row) return;
+    const cur = row['職員名'] || '未割当';
+    const names = (state.staffNames || []).slice();
+    const opts = ['未割当'].concat(names).map(n => `<option ${n === cur ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('');
+    openModal('予定を修正',
+      `<label>担当職員<select id="m_staff">${opts}</select></label>
+       <label>開始時刻<input id="m_start" type="time" value="${escapeAttr(toHHMM(row['開始時刻']))}"></label>
+       <label>終了時刻<input id="m_end" type="time" value="${escapeAttr(toHHMM(row['終了時刻']))}"></label>
+       <label>変更理由<input id="m_reason" value="手動修正"></label>`,
+      async () => {
+        const staff = document.getElementById('m_staff').value;
+        const start = document.getElementById('m_start').value;
+        const end = document.getElementById('m_end').value;
+        const reason = document.getElementById('m_reason').value || '手動修正';
+        closeModal();
+        showBusy('修正を保存しています…');
+        try {
+          await server('updateSchedule', state.token, { '訪問予定ID': id, '職員名': staff, '開始時刻': start, '終了時刻': end, 'ステータス': STATUS.CHANGED }, reason);
+          toast('予定を修正しました。');
+          await loadSchedules();
+          await loadDashboard();
+        } catch (error) {
+          toast(friendlyError(error));
+        } finally {
+          hideBusy();
+        }
+      }, '保存');
+  }
+
+  function cancelVisit(id) {
+    openModal('予定を取り消します',
+      `<label>取消理由<input id="m_reason" value="キャンセル"></label>`,
+      async () => {
+        const reason = document.getElementById('m_reason').value || 'キャンセル';
+        closeModal();
+        showBusy('処理しています…');
+        try {
+          await server('cancelSchedule', state.token, id, reason);
+          toast('取り消しました。');
+          await loadSchedules();
+          await loadDashboard();
+        } catch (error) {
+          toast(friendlyError(error));
+        } finally {
+          hideBusy();
+        }
+      }, '取り消す');
+  }
+
+  function markHandled(id) {
+    openModal('未割当を対応済にします',
+      `<label>対応メモ<input id="m_memo" value="手動対応済"></label>`,
+      async () => {
+        const memo = document.getElementById('m_memo').value || '手動対応済';
+        closeModal();
+        showBusy('処理しています…');
+        try {
+          await server('markUnassignedHandled', state.token, id, memo);
+          toast('対応済にしました。');
+          await loadUnassigned();
+        } catch (error) {
+          toast(friendlyError(error));
+        } finally {
+          hideBusy();
+        }
+      }, '対応済にする');
+  }
+
+  // ===== マスタ =====
+  async function loadStaffNames() {
+    try {
+      const d = await server('listMaster', state.token, 'staff', { limit: 500 });
+      state.staffNames = (d.rows || []).map(r => r['氏名']).filter(Boolean);
+    } catch (e) { /* 名簿取得失敗は手修正時に未割当のみ選択可とする */ }
+  }
+
+  async function loadMaster() {
+    try {
+      const name = val('masterSelect');
+      const data = await server('listMaster', state.token, name, { limit: 200 });
+      state.currentMaster = name;
+      state.masterHeaders = data.headers;
+      state.masterKey = data.key;
+      renderMasterTable(data.rows);
+      newMasterRecord();
+      if (data.limited) toast(`一覧は先頭200件のみ表示しています。全${data.total}件`);
+    } catch (error) {
+      toast(friendlyError(error));
+    }
+  }
+
+  function renderMasterTable(rows) {
+    const headers = state.masterHeaders.slice(0, 10);
+    const body = rows.map((row, index) => `<tr onclick="selectMasterRow(${index})">${headers.map(h => `<td>${escapeHtml(row[h])}</td>`).join('')}</tr>`).join('');
+    document.getElementById('masterTable').innerHTML = rows.length ? `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>` : emptyState('データがありません。');
+    window.__masterRows = rows;
+  }
+
+  async function selectMasterRow(index) {
+    const row = window.__masterRows[index];
+    const id = row && row[state.masterKey];
+    if (!id) return;
+    try {
+      const data = await server('getMasterRecord', state.token, state.currentMaster, id);
+      state.masterHeaders = data.headers;
+      state.masterKey = data.key;
+      state.editingRecord = Object.assign({}, data.record);
+      renderMasterEditor();
+    } catch (error) {
+      toast(friendlyError(error));
+    }
+  }
+
+  function newMasterRecord() {
+    state.editingRecord = {};
+    renderMasterEditor();
+  }
+
+  function renderMasterEditor() {
+    const fields = state.masterHeaders.map(header => {
+      const value = state.editingRecord[header] == null ? '' : state.editingRecord[header];
+      return `<label>${escapeHtml(header)}<input data-field="${escapeAttr(header)}" value="${escapeAttr(value)}"></label>`;
+    }).join('');
+    document.getElementById('masterEditor').innerHTML = `${fields}<button class="primary" onclick="saveMaster()">保存</button>`;
+  }
+
+  async function saveMaster() {
+    const record = {};
+    document.querySelectorAll('#masterEditor [data-field]').forEach(input => record[input.dataset.field] = input.value);
+    try {
+      await server('saveMasterRecord', state.token, state.currentMaster, record);
+      toast('保存しました。');
+      await loadMaster();
+    } catch (error) {
+      toast(friendlyError(error));
+    }
+  }
+
+  // ===== 出力 =====
+  function showOutputResult(ok, message, url) {
+    const el = document.getElementById('outputResult');
+    el.classList.remove('result-empty', 'is-ok', 'is-err');
+    el.classList.add(ok ? 'is-ok' : 'is-err');
+    const link = (url && /^https?:/.test(url)) ? `\nリンク: ${url}` : '';
+    el.textContent = `${ok ? '✓ ' : '✗ '}${message}${link}`;
+  }
+
+  function openIfReal(url) {
+    if (url && /^https?:/.test(url)) window.open(url, '_blank');
+  }
+
+  async function exportCsvFile() {
+    showBusy('CSVを作成しています…');
+    try {
+      const label = (document.querySelector('#csvType option:checked') || {}).textContent || 'CSV';
+      const result = await server('exportCsv', state.token, val('csvType'), val('outputStart'), val('outputEnd'));
+      showOutputResult(true, `CSV（${label}）を出力しました。${result.url ? '' : '（プレビューのためリンクはダミーです）'}`, result.url);
+      openIfReal(result.url);
+      toast('CSVを出力しました。');
+    } catch (error) {
+      showOutputResult(false, 'CSV出力に失敗しました。' + friendlyError(error));
+      toast(friendlyError(error));
+    } finally { hideBusy(); }
+  }
+
+  async function exportPdfFile() {
+    showBusy('日別PDFを作成しています…');
+    try {
+      const result = await server('createDailyPdf', state.token, val('outputStart'));
+      showOutputResult(true, `日別PDF（${val('outputStart')}）を出力しました。${result.url ? '' : '（プレビューのためリンクはダミーです）'}`, result.url);
+      openIfReal(result.url);
+      toast('日別PDFを出力しました。');
+    } catch (error) {
+      showOutputResult(false, 'PDF出力に失敗しました。' + friendlyError(error));
+      toast(friendlyError(error));
+    } finally { hideBusy(); }
+  }
+
+  async function getExcelUrl() {
+    showBusy('Excel(スプレッドシート)出力URLを取得しています…');
+    try {
+      const result = await server('getExcelExportUrl', state.token);
+      showOutputResult(true, `Excel出力URLを取得しました。${result.url ? '' : '（プレビューのためリンクはダミーです）'}`, result.url);
+      openIfReal(result.url);
+      toast('Excel出力URLを取得しました。');
+    } catch (error) {
+      showOutputResult(false, 'Excel出力URLの取得に失敗しました。' + friendlyError(error));
+      toast(friendlyError(error));
+    } finally { hideBusy(); }
+  }
+
+  // ===== オーバーレイ / モーダル =====
+  function showBusy(message) {
+    state.isBusy = true;
+    const o = document.getElementById('overlay');
+    document.getElementById('overlayMsg').textContent = message || '処理中です…';
+    const bar = document.getElementById('progressBar');
+    bar.style.width = '0%';
+    o.classList.remove('hidden');
+    const t0 = Date.now();
+    clearInterval(state.busyTimer);
+    state.busyTimer = setInterval(() => {
+      const sec = Math.floor((Date.now() - t0) / 1000);
+      document.getElementById('overlayElapsed').textContent = `経過 ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+      bar.style.width = Math.min(90, sec / 90 * 90) + '%';
+    }, 500);
+  }
+
+  function hideBusy() {
+    state.isBusy = false;
+    clearInterval(state.busyTimer);
+    document.getElementById('progressBar').style.width = '100%';
+    setTimeout(() => document.getElementById('overlay').classList.add('hidden'), 200);
+  }
+
+  function openModal(title, bodyHtml, onOk, okLabel) {
+    state.lastFocus = document.activeElement;
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').innerHTML = bodyHtml;
+    document.getElementById('modalOk').textContent = okLabel || 'OK';
+    document.getElementById('modal').classList.remove('hidden');
+    state.modalOk = onOk;
+    setTimeout(() => {
+      const f = document.querySelector('#modalBody input, #modalBody select, #modalBody textarea, #modalOk');
+      if (f) f.focus();
+    }, 30);
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('modal');
+    if (modal.classList.contains('hidden')) return;
+    modal.classList.add('hidden');
+    state.modalOk = null;
+    // フォーカスを開く前の要素へ戻す
+    if (state.lastFocus && typeof state.lastFocus.focus === 'function') {
+      try { state.lastFocus.focus(); } catch (e) { /* 要素が消えていれば無視 */ }
+    }
+    state.lastFocus = null;
+  }
+
+  function modalFocusables() {
+    const modal = document.getElementById('modal');
+    const nodes = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    return Array.prototype.filter.call(nodes, el => !el.disabled && el.offsetParent !== null);
+  }
+
+  function trapModalKeydown(e) {
+    if (e.key !== 'Tab') return;
+    const list = modalFocusables();
+    if (!list.length) return;
+    const first = list[0];
+    const last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault(); last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault(); first.focus();
+    } else if (!document.getElementById('modal').contains(document.activeElement)) {
+      e.preventDefault(); first.focus();
+    }
+  }
+
+  // ===== ヘルパー =====
+  function val(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+
+  function monthBounds(m) {
+    const parts = m.split('-').map(Number);
+    const first = `${parts[0]}-${String(parts[1]).padStart(2, '0')}-01`;
+    const last = new Date(parts[0], parts[1], 0);
+    const ld = `${parts[0]}-${String(parts[1]).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`;
+    return { startDate: first, endDate: ld };
+  }
+
+  function daysBetween(a, b) {
+    const da = new Date(a), db = new Date(b);
+    return Math.max(1, Math.round((db - da) / 86400000) + 1);
+  }
+
+  function syncRangesTo(range) {
+    if (!range) return;
+    ['scheduleStart', 'unassignedStart', 'outputStart'].forEach(id => { const el = document.getElementById(id); if (el) el.value = range.startDate; });
+    ['scheduleEnd', 'unassignedEnd', 'outputEnd'].forEach(id => { const el = document.getElementById(id); if (el) el.value = range.endDate; });
+    const dd = document.getElementById('dashboardDate'); if (dd) dd.value = range.startDate;
+  }
+
+  function toHHMM(value) {
+    const m = String(value || '').match(/(\d{1,2}):(\d{2})/);
+    return m ? `${String(m[1]).padStart(2, '0')}:${m[2]}` : '';
+  }
+
+  function minutes(time) {
+    const m = String(time || '').match(/(\d{1,2}):(\d{2})/);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
+  }
+
+  function emptyState(text) {
+    return `<div class="panel muted">${escapeHtml(text)}</div>`;
+  }
+
+  // 予定が無いときの親切な空表示（「自動作成へ」ボタン付き）
+  function emptyScheduleState(text) {
+    return `<div class="panel" style="display:grid;gap:10px;justify-items:start">
+      <span class="muted">${escapeHtml(text)}</span>
+      <button class="primary" type="button" onclick="showView('auto')">自動作成へ →</button>
+    </div>`;
+  }
+
+  function friendlyError(error) {
+    const m = (error && error.message) ? error.message : String(error || '');
+    if (/権限|requireAuth|ログイン|認証|セッション/.test(m)) return '権限が無いか、ログインの有効期限が切れています。再度ログインしてください。';
+    if (/実行中/.test(m)) return m;
+    if (/timeout|timed out|exceeded|maximum execution|時間/.test(m)) return '処理に時間がかかりすぎました。対象期間を短くして、もう一度お試しください。';
+    if (!m) return '通信に失敗しました。ネットワークを確認してもう一度お試しください。';
+    return m;
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value).replace(/\n/g, ' ');
+  }
+
+  function toast(message) {
+    const el = document.getElementById('toast');
+    el.textContent = message;
+    el.classList.remove('hidden');
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(() => el.classList.add('hidden'), 4200);
+  }
+</script>
+
+  </body>
+</html>
