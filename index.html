@@ -598,6 +598,10 @@
           </div>
           <div id="summaryCards" class="summary-grid"></div>
           <div class="section-title">
+            <h2 id="capacityTitle">持ち点と使用点数の乖離</h2>
+          </div>
+          <div id="capacityPanel"></div>
+          <div class="section-title">
             <h2 id="timelineTitle">本日の職員別タイムライン</h2>
           </div>
           <div id="timeline" class="timeline"></div>
@@ -860,6 +864,15 @@
     '日': [['利用者06','身体01Ⅱ','118527',20],['利用者41','身体01Ⅱ','118527',20],['利用者39','身体1Ⅱ','112451',30],['利用者05','身体01Ⅱ','118527',20],['利用者28','身体01Ⅱ','118527',20],['利用者37','身体1Ⅱ','112451',30],['利用者23','身体01Ⅱ','118527',20],['利用者42','身体1Ⅱ','112451',30],['利用者02','身体1Ⅱ','112451',30],['利用者38','訪問型サービスA型Ⅰ','A31001',45],['利用者10','訪問型サービスA型Ⅰ','A31001',45],['利用者28','身体01Ⅱ','118527',20],['利用者05','身体01Ⅱ','118527',20],['利用者37','身体01Ⅱ','118527',20],['利用者39','身体1Ⅱ','112451',30],['利用者23','身体01Ⅱ','118527',20]]
   };
 
+  // 介護度と持ち点数（区分支給限度基準額の単位数／月）。
+  // 共有シートの利用者一覧に「介護度」「持ち点数」列を追加したら、ここへ取り込む。
+  // 例: '利用者01': { care:'要介護1', points:16765 }
+  const USER_CARE = {};
+
+  // サービスコードごとの単位数。共有シートのコード表「単位数」列を埋めたら取り込む。
+  // 例: '112451': 250
+  const SERVICE_UNITS = {};
+
   // 勤務時間は元シートに無いため暫定値。確定したらここを直す。
   const WORK_START = 8 * 60;      // 08:00
   const WORK_END = 17 * 60 + 30;  // 17:30
@@ -867,7 +880,10 @@
 
   const nrm = s => String(s || '').replace(/[\s　]/g, '');
   const USER_BY_NAME = {};
-  SHEET_USERS.forEach(([name, kubun, room]) => { USER_BY_NAME[nrm(name)] = { name, kubun, room }; });
+  SHEET_USERS.forEach(([name, kubun, room]) => {
+    const c = USER_CARE[name] || {};
+    USER_BY_NAME[nrm(name)] = { name, kubun, room, care: c.care || '', points: c.points || 0 };
+  });
   const hhmm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
   const toMin = t => { const m = String(t).match(/(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : 0; };
 
@@ -973,9 +989,12 @@
       const pad = v.kubun === '外部' ? TRAVEL_MIN : 0;
       picked.busy.push({ s: start, e: end + pad });
       if (!v.fixed) picked.cursor = end + pad;
+      const uinfo = USER_BY_NAME[v.key] || {};
       schedules.push({
         '訪問予定ID': `V${n}-${date}`, '日付': date, '曜日': wLong,
         '開始時刻': hhmm(start), '終了時刻': hhmm(end), '利用者名': v.name,
+        '介護度': uinfo.care || '', '持ち点数': uinfo.points || 0,
+        'サービスコード': v.code || '', '単位数': SERVICE_UNITS[v.code] || 0,
         'サービス種別': v.service, '職員ID': picked.id, '職員名': picked.name,
         '訪問区分': v.kubun, '移動時間': v.kubun === '外部' ? TRAVEL_MIN : 0,
         'ステータス': warn ? '要確認' : '仮作成', '警告': warn
@@ -1101,6 +1120,32 @@
     markUnassignedHandled: () => ({ ok:true }),
     assignUnassigned: () => ({ ok:true }),
     setupApp: () => ({ ok:true, message:'APP用シートと初期データを準備しました。' }),
+    // 月間の持ち点（区分支給限度基準額）と実際の使用単位数を利用者ごとに集計する
+    getCapacity: (token, month) => {
+      const m = month || PREVIEW_TODAY.slice(0, 7);
+      const q = m.split('-').map(Number);
+      const last = new Date(q[0], q[1], 0).getDate();
+      const used = {};
+      for (let d = 1; d <= last; d++) {
+        const ds = `${q[0]}-${String(q[1]).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        buildDay(ds).schedules.forEach(s => {
+          const k = nrm(s['利用者名']);
+          used[k] = (used[k] || 0) + (Number(s['単位数']) || 0);
+        });
+      }
+      const rows = SHEET_USERS.map(([name, kubun]) => {
+        const u = USER_BY_NAME[nrm(name)] || {};
+        return {
+          '利用者名': name, '区分': kubun === '外' ? '外部' : 'ケアハウス内',
+          '介護度': u.care || '', '持ち点数': u.points || 0, '使用点数': used[nrm(name)] || 0
+        };
+      });
+      return {
+        month: m, rows,
+        hasUnits: Object.keys(SERVICE_UNITS).length > 0,
+        hasPoints: rows.some(r => r['持ち点数'] > 0)
+      };
+    },
     exportCsv: () => ({ url:'#csv' }),
     createDailyPdf: () => ({ url:'#pdf' }),
     getExcelExportUrl: () => ({ url:'#xlsx' })
@@ -1612,7 +1657,8 @@
       updateDashboardTitles(data.date || date);
       renderSummary(data);
       renderTimeline(data.schedules);
-      renderScheduleTable('todayTable', data.schedules, true);
+      renderCapacity(date);
+      renderScheduleTable('todayTable', data.schedules, true, true);
     } catch (error) {
       toast(friendlyError(error));
     }
@@ -1650,6 +1696,66 @@
       `<div class="summary-card ${cls}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong>` +
       (note ? `<span class="card-note">${escapeHtml(note)}</span>` : '') + `</div>`
     )).join('');
+  }
+
+  // 持ち点（月あたりの支給限度単位数）と、その月に実際に使った単位数の差を示す。
+  // 支給限度額は月単位のため、比較も月単位で行う。
+  async function renderCapacity(dateStr) {
+    const month = String(dateStr || state.today).slice(0, 7);
+    const el = document.getElementById('capacityPanel');
+    const title = document.getElementById('capacityTitle');
+    const parts = month.split('-');
+    if (title) title.textContent = `持ち点と使用点数の乖離（${parts[0]}年${Number(parts[1])}月）`;
+    try {
+      const data = await server('getCapacity', state.token, month);
+      if (!data.hasPoints || !data.hasUnits) {
+        const missing = [];
+        if (!data.hasPoints) missing.push('利用者一覧の「介護度」「持ち点数」列');
+        if (!data.hasUnits) missing.push('サービスコード表の「単位数」列');
+        el.innerHTML = `<div class="panel">
+          <p class="help" style="margin:0">乖離を計算するためのデータがまだ入力されていません。</p>
+          <p class="help warn-text" style="margin:6px 0 0">未入力: ${escapeHtml(missing.join(' / '))}</p>
+          <p class="help" style="margin:6px 0 0">共有スプレッドシートに入力後、「自動作成」タブの「既存シートを取り込む」を実行すると、ここに集計が表示されます。</p>
+        </div>`;
+        return;
+      }
+      const groups = ['ケアハウス内', '外部'];
+      const cards = groups.map(g => {
+        const rows = data.rows.filter(r => r['区分'] === g);
+        const have = rows.reduce((a, r) => a + r['持ち点数'], 0);
+        const use = rows.reduce((a, r) => a + r['使用点数'], 0);
+        const diff = have - use;
+        const rate = have ? Math.round(use / have * 1000) / 10 : 0;
+        return `<div class="summary-card ${diff < 0 ? 'warn' : ''}">
+          <span>${escapeHtml(g)}（${rows.length}名）</span>
+          <strong>${rate}%</strong>
+          <span class="card-note">持ち点 ${have.toLocaleString()} / 使用 ${use.toLocaleString()}<br>
+          ${diff >= 0 ? '残り' : '超過'} ${Math.abs(diff).toLocaleString()} 単位</span>
+        </div>`;
+      }).join('');
+      const list = data.rows.slice().sort((a, b) =>
+        (b['持ち点数'] - b['使用点数']) - (a['持ち点数'] - a['使用点数']));
+      const body = list.map(r => {
+        const diff = r['持ち点数'] - r['使用点数'];
+        const rate = r['持ち点数'] ? Math.round(r['使用点数'] / r['持ち点数'] * 1000) / 10 : 0;
+        return `<tr${diff < 0 ? ' class="warning-row"' : ''}>
+          <td data-label="利用者名">${escapeHtml(r['利用者名'])}</td>
+          <td data-label="区分">${escapeHtml(r['区分'])}</td>
+          <td data-label="介護度">${escapeHtml(r['介護度'] || '—')}</td>
+          <td data-label="持ち点数">${r['持ち点数'].toLocaleString()}</td>
+          <td data-label="使用点数">${r['使用点数'].toLocaleString()}</td>
+          <td data-label="差"${diff < 0 ? ' class="warning"' : ''}>${diff >= 0 ? '' : '△'}${Math.abs(diff).toLocaleString()}</td>
+          <td data-label="消化率">${rate}%</td>
+        </tr>`;
+      }).join('');
+      el.innerHTML = `<div class="summary-grid">${cards}</div>
+        <div class="table-wrap"><table class="resp">
+          <thead><tr><th>利用者名</th><th>区分</th><th>介護度</th><th>持ち点数</th><th>使用点数</th><th>差</th><th>消化率</th></tr></thead>
+          <tbody>${body}</tbody>
+        </table></div>`;
+    } catch (error) {
+      el.innerHTML = emptyState('乖離の集計を取得できませんでした。');
+    }
   }
 
   function renderTimeline(rows) {
@@ -1705,8 +1811,10 @@
     }
   }
 
-  function renderScheduleTable(targetId, rows, withActions) {
-    const headers = ['日付', '曜日', '開始時刻', '終了時刻', '利用者名', 'サービス種別', '職員名', '訪問区分', '移動時間', 'ステータス', '警告'];
+  function renderScheduleTable(targetId, rows, withActions, withPoints) {
+    const headers = withPoints
+      ? ['日付', '曜日', '開始時刻', '終了時刻', '利用者名', '介護度', '持ち点数', 'サービス種別', '単位数', '職員名', '訪問区分', '移動時間', 'ステータス', '警告']
+      : ['日付', '曜日', '開始時刻', '終了時刻', '利用者名', 'サービス種別', '職員名', '訪問区分', '移動時間', 'ステータス', '警告'];
     const actionHeader = withActions ? '<th>操作</th>' : '';
     const body = rows.map(row => {
       const hasWarn = !!row['警告'] || row['ステータス'] === STATUS.REVIEW;
@@ -1717,6 +1825,12 @@
         }
         if (h === 'ステータス') {
           return `<td data-label="ステータス"><span class="status ${statusClass(row[h])}">${escapeHtml(row[h])}</span></td>`;
+        }
+        if (h === '介護度' || h === '持ち点数' || h === '単位数') {
+          // 共有シートに未入力のうちは「—」を出す（0件と区別する）
+          const v = row[h];
+          const empty = (v === '' || v == null || v === 0);
+          return `<td data-label="${escapeAttr(h)}"${empty ? ' class="result-empty"' : ''}>${empty ? '—' : escapeHtml(v)}</td>`;
         }
         return `<td data-label="${escapeAttr(h)}">${escapeHtml(row[h])}</td>`;
       }).join('');
