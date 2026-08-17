@@ -181,6 +181,7 @@
     padding: 14px;
   }
   .summary-card strong { display: block; font-size: 24px; margin-top: 4px; }
+  .summary-card .card-note { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; line-height: 1.4; }
   .summary-card.warn { background: var(--warn-bg); border-color: #f3b8b3; }
   .summary-card.ok { background: var(--ok-bg); border-color: #b7dfc1; }
   .section-title {
@@ -887,7 +888,7 @@
     const wLong = previewWeekday(date);
     const w = wLong.charAt(0);
     const plans = SHEET_PLANS[w] || [];
-    if (!w || !plans.length) return (dayCache[date] = { schedules: [], unassigned: [] });
+    if (!w || !plans.length) return (dayCache[date] = { schedules: [], unassigned: [], staffOnDuty: 0 });
 
     // その曜日の固定時刻を利用者ごとのキューにする
     const fixedQueue = {};
@@ -982,7 +983,9 @@
     });
 
     schedules.sort((a, b) => toMin(a['開始時刻']) - toMin(b['開始時刻']));
-    return (dayCache[date] = { schedules, unassigned });
+    // その日に勤務する職員数（日曜は日曜出勤可の職員のみ）
+    const staffOnDuty = SHEET_STAFF.filter(s => w !== '日' || s.sunday).length;
+    return (dayCache[date] = { schedules, unassigned, staffOnDuty });
   }
 
   function sampleSchedules(dateStr) { return buildDay(dateStr).schedules; }
@@ -1016,9 +1019,15 @@
     logoutUser: () => ({ ok:true }),
     getDashboard: (token, date) => {
       const d = date || PREVIEW_TODAY;
-      const rows = sampleSchedules(d);
+      const day = buildDay(d);
+      const rows = day.schedules;
+      // 稼働率 = 実際の援助時間(訪問の合計) ÷ 当日勤務する職員の労働時間の合計
+      const visitMinutes = rows.reduce((a, s) => a + (toMin(s['終了時刻']) - toMin(s['開始時刻'])), 0);
+      const workMinutes = day.staffOnDuty * (WORK_END - WORK_START);
       return {
         user:{}, date:d,
+        visitMinutes, workMinutes, staffOnDuty: day.staffOnDuty,
+        utilization: workMinutes ? Math.round(visitMinutes / workMinutes * 1000) / 10 : 0,
         visitCount: rows.length,
         unassignedCount: sampleUnassigned(d).length,
         warningCount: rows.filter(r => r['警告']).length,
@@ -1625,15 +1634,21 @@
   }
 
   function renderSummary(data) {
+    const hours = m => (Number(m || 0) / 60).toFixed(1) + '時間';
     const cards = [
-      ['訪問件数', data.visitCount, 'ok'],
-      ['未割当件数', data.unassignedCount, data.unassignedCount ? 'warn' : 'ok'],
-      ['警告件数', data.warningCount, data.warningCount ? 'warn' : 'ok'],
-      ['ケアハウス内', data.internalCount, ''],
-      ['外部訪問', data.externalCount, '']
+      ['訪問件数', data.visitCount, 'ok', ''],
+      ['未割当件数', data.unassignedCount, data.unassignedCount ? 'warn' : 'ok', ''],
+      ['稼働率', (data.utilization != null ? data.utilization : 0) + '%', '',
+        `訪問${hours(data.visitMinutes)} ÷ 労働${hours(data.workMinutes)}`],
+      ['労働時間', hours(data.workMinutes), '', `職員${data.staffOnDuty || 0}名`],
+      ['訪問時間', hours(data.visitMinutes), '', '実際の援助時間の合計'],
+      ['警告件数', data.warningCount, data.warningCount ? 'warn' : 'ok', ''],
+      ['ケアハウス内', data.internalCount, '', ''],
+      ['外部訪問', data.externalCount, '', '']
     ];
-    document.getElementById('summaryCards').innerHTML = cards.map(([label, value, cls]) => (
-      `<div class="summary-card ${cls}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`
+    document.getElementById('summaryCards').innerHTML = cards.map(([label, value, cls, note]) => (
+      `<div class="summary-card ${cls}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong>` +
+      (note ? `<span class="card-note">${escapeHtml(note)}</span>` : '') + `</div>`
     )).join('');
   }
 
